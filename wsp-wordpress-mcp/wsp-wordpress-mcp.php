@@ -67,7 +67,35 @@ function wsp_mcp_is_enabled( $key ) {
 // ─────────────────────────────────────────────
 add_action( 'admin_menu', 'wsp_mcp_add_menu' );
 function wsp_mcp_add_menu() {
-    add_options_page( 'WSP MCP Abilities', 'WSP MCP', 'manage_options', 'wsp-mcp-abilities', 'wsp_mcp_settings_page' );
+    // 1. Add the main top-level menu exactly beneath Dashboard (position 3)
+    add_menu_page( 
+        'WSP MCP Abilities', 
+        'MCP', 
+        'manage_options', 
+        'wsp-mcp-abilities', 
+        'wsp_mcp_settings_page', 
+        'dashicons-admin-generic', 
+        3 
+    );
+
+    // 2. Rename the first default sub-menu item to "Settings"
+    add_submenu_page(
+        'wsp-mcp-abilities',
+        'Settings',
+        'Settings',
+        'manage_options',
+        'wsp-mcp-abilities' // Same slug as parent routes it to settings
+    );
+
+    // 3. Add the new "Config Files" sub-menu
+    add_submenu_page(
+        'wsp-mcp-abilities',
+        'Config Files',
+        'Config Files',
+        'manage_options',
+        'wsp-mcp-config',
+        'wsp_mcp_config_page'
+    );
 }
 
 add_action( 'admin_init', 'wsp_mcp_register_settings' );
@@ -204,6 +232,105 @@ function wsp_mcp_settings_page() {
                 var boxes = document.querySelectorAll('input[data-group="'+g+'"]');
                 var allOn = Array.from(boxes).every(function(b){ return b.checked; });
                 boxes.forEach(function(b){ b.checked = !allOn; });
+            });
+        });
+    });
+    </script>
+    <?php
+}
+
+// ─────────────────────────────────────────────
+// CONFIG FILES PAGE
+// ─────────────────────────────────────────────
+function wsp_mcp_config_page() {
+    // Fetch dynamic data for the JSON config
+    $current_user = wp_get_current_user();
+    $username     = $current_user->exists() ? $current_user->user_login : 'your-wordpress-user-name';
+    $api_url      = untrailingslashit( rest_url( 'mcp/mcp-adapter-default-server' ) );
+
+    // Build the configuration array
+    $config_array = array(
+        'mcpServers' => array(
+            'wsp-wordpress-mcp' => array(
+                'command' => 'npx',
+                'args'    => array(
+                    '-y',
+                    '@automattic/mcp-wordpress-remote@latest'
+                ),
+                'env' => array(
+                    'WP_API_URL'      => $api_url,
+                    'WP_API_USERNAME' => $username,
+                    'WP_API_PASSWORD' => 'replace-with-your-application-password'
+                )
+            )
+        )
+    );
+
+    // Convert array to beautifully formatted JSON
+    $config_json = wp_json_encode( $config_array, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+    ?>
+    <style>
+        .wsp-wrap { max-width:860px; margin:30px 20px; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+        .wsp-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+        .wsp-header h1 { margin:0; font-size:22px; font-weight:700; color:#1d2327; }
+        .wsp-desc { color:#646970; margin-bottom:24px; font-size:13.5px; line-height:1.65; }
+        .wsp-config-box { background:#fff; border:1px solid #dcdcde; border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+        .wsp-instructions { padding:20px; border-bottom:1px solid #f0f0f1; background:#fff; }
+        .wsp-instructions p { margin:0 0 10px 0; color:#3c434a; font-size:14px; }
+        .wsp-instructions p:last-child { margin:0; }
+        .wsp-instructions code { background:#f0f0f1; padding:3px 6px; border-radius:4px; font-size:13px; color:#d63638; font-family:monospace; }
+        .wsp-config-header { background:#f6f7f7; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #dcdcde; }
+        .wsp-config-title { font-weight:700; font-size:13.5px; color:#1d2327; margin:0; display:flex; align-items:center; gap:8px; }
+        .wsp-copy-btn { font-size:12px; color:#0073aa; cursor:pointer; background:none; border:none; padding:0; font-weight:600; display:flex; align-items:center; gap:4px; transition: color 0.2s; }
+        .wsp-copy-btn:hover { color:#00a32a; }
+        .wsp-code-area { background:#1e1e1e; color:#d4d4d4; padding:20px; margin:0; font-family:Consolas, Monaco, monospace; font-size:13.5px; line-height:1.6; overflow-x:auto; }
+    </style>
+
+    <div class="wsp-wrap">
+        <div class="wsp-header">
+            <h1>⚙️ Claude Config File</h1>
+        </div>
+        <p class="wsp-desc">
+            Use the configuration below to connect Claude Desktop to your WordPress site. 
+            Your API URL and Admin Username have been automatically detected.
+        </p>
+
+        <div class="wsp-config-box">
+            <div class="wsp-instructions">
+                <p>1. Go to <strong>Users &gt; Profile</strong> and scroll down to generate a new <strong>Application Password</strong>.</p>
+                <p>2. In the code below, replace <code>replace-with-your-application-password</code> with your new password.</p>
+                <p>3. Copy the code and paste it into your <code>claude_desktop_config.json</code> file.</p>
+            </div>
+            
+            <div class="wsp-config-header">
+                <h3 class="wsp-config-title">claude_desktop_config.json</h3>
+                <button type="button" class="wsp-copy-btn" id="wsp-copy-btn">
+                    <span class="dashicons dashicons-clipboard" style="font-size:16px; width:16px; height:16px;"></span> Copy to Clipboard
+                </button>
+            </div>
+            
+            <pre class="wsp-code-area" id="wsp-config-code"><?php echo esc_html( $config_json ); ?></pre>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var copyBtn = document.getElementById('wsp-copy-btn');
+        var codeBlock = document.getElementById('wsp-config-code');
+        
+        copyBtn.addEventListener('click', function() {
+            var text = codeBlock.innerText;
+            navigator.clipboard.writeText(text).then(function() {
+                var originalHTML = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<span class="dashicons dashicons-yes-alt" style="font-size:16px; width:16px; height:16px;"></span> Copied!';
+                copyBtn.style.color = '#00a32a';
+                
+                setTimeout(function() {
+                    copyBtn.innerHTML = originalHTML;
+                    copyBtn.style.color = '';
+                }, 2500);
+            }).catch(function(err) {
+                alert('Failed to copy text. Please select and copy manually.');
             });
         });
     });
