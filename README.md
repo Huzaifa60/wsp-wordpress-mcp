@@ -5,6 +5,7 @@
 [![WordPress MCP](https://img.shields.io/badge/WordPress-MCP%20Server-21759B?style=for-the-badge&logo=wordpress&logoColor=white)](https://github.com/bilalnaseer/wsp-wordpress-mcp)
 [![WebSensePro](https://img.shields.io/badge/Built%20by-WebSensePro-FF6B35?style=for-the-badge)](https://websensepro.com)
 [![YouTube](https://img.shields.io/badge/YouTube-140K%2B%20Subscribers-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://m.youtube.com/websensepro)
+[![Version](https://img.shields.io/badge/Version-1.1.0-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 ---
@@ -24,7 +25,9 @@ The **WSP WordPress MCP** server is built and maintained by [WebSensePro](https:
 - ⚙️ **Site Administration** — manage settings, plugins, and themes through natural language
 - 🛡️ **Secure by Design** — authentication and permission controls built in
 - 🔄 **REST API Bridge** — translates MCP tool calls into WordPress REST API requests
-- 🤝 **Multi-Agent Support** — works with Claude (Anthropic), Cursor, ChatGPT, and other MCP clients
+- 🤝 **Multi-Agent Support** — works with Claude Desktop and Codex adding more MCP Clients as soon as possible
+- 🗂️ **Built-in Config Generator** — wp-admin Config Files page auto-generates ready-to-paste configs for Claude Desktop and Codex
+- 🔒 **Granular Ability Controls** — enable/disable each read or write ability individually from wp-admin
 - 🚀 **Agency-Grade** — built by developers who run WordPress at scale for clients worldwide
 
 ---
