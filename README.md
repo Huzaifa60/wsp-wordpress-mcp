@@ -46,6 +46,12 @@ The Model Context Protocol (MCP) was designed specifically to standardize how AI
 
 ---
 
+## 🎬 Video Demo
+
+[![WSP WordPress MCP — Video Demo](https://img.youtube.com/vi/nHE6PcA5pfc/maxresdefault.jpg)](https://youtu.be/nHE6PcA5pfc)
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
