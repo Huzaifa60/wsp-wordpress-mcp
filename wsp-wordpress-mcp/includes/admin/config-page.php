@@ -11,6 +11,20 @@ function wsp_mcp_config_page() {
     $site_domain = parse_url( get_site_url(), PHP_URL_HOST );
     $toml_key    = 'wsp-' . trim( preg_replace( '/[^a-z0-9]+/', '-', strtolower( $site_domain ) ), '-' );
 
+    $openclaw_json = "\"mcp\": {\n"
+        . "    \"servers\": {\n"
+        . "        \"wsp-wordpress-mcp\": {\n"
+        . "            \"command\": \"npx\",\n"
+        . "            \"args\": [\"-y\", \"@automattic/mcp-wordpress-remote@latest\"],\n"
+        . "            \"env\": {\n"
+        . "                \"WP_API_URL\": \"{$api_url}\",\n"
+        . "                \"WP_API_USERNAME\": \"{$username}\",\n"
+        . "                \"WP_API_PASSWORD\": \"replace-with-your-application-password\"\n"
+        . "            }\n"
+        . "        }\n"
+        . "    }\n"
+        . "},";
+
     $config_array = array(
         'mcpServers' => array(
             'wsp-wordpress-mcp' => array(
@@ -72,6 +86,7 @@ function wsp_mcp_config_page() {
             <button type="button" class="wsp-tab-btn" data-tab="cursor">Cursor</button>
             <button type="button" class="wsp-tab-btn" data-tab="codex">Codex</button>
             <button type="button" class="wsp-tab-btn" data-tab="antigravity">Antigravity</button>
+            <button type="button" class="wsp-tab-btn" data-tab="openclaw">OpenClaw</button>
         </div>
 
         <div class="wsp-tab-panel wsp-tab-panel-active" id="wsp-tab-claude">
@@ -124,6 +139,26 @@ function wsp_mcp_config_page() {
                 <pre class="wsp-code-area" id="wsp-code-codex"><?php echo esc_html( $toml_config ); ?></pre>
             </div>
         </div>
+        <div class="wsp-tab-panel" id="wsp-tab-openclaw">
+            <div class="wsp-config-box">
+                <div class="wsp-instructions">
+                    <p>1. Go to <strong>Users &gt; Profile</strong> and scroll down to generate a new <strong>Application Password</strong>.</p>
+                    <p>2. In the code below, replace <code>replace-with-your-application-password</code> with your new password.</p>
+                    <p>3. Open <code>~/.openclaw/openclaw.json</code> and paste the copied block on the line right after the opening <code>{</code> at the top of the file.</p>
+                    <p>4. Save the file and restart OpenClaw.</p>
+                    <p>5. Restart the gateway: <code>openclaw gateway restart</code></p>
+                    <p>6. Verify the connection: <code>openclaw mcp status --verbose</code></p>
+                    <p>7. Test connectivity: <code>openclaw mcp probe wsp-wordpress-mcp</code></p>
+                </div>
+                <div class="wsp-config-header">
+                    <span class="wsp-config-title">~/.openclaw/openclaw.json</span>
+                    <button type="button" class="wsp-copy-btn" id="wsp-copy-openclaw">
+                        <span class="dashicons dashicons-clipboard" style="font-size:16px;width:16px;height:16px;"></span> Copy to Clipboard
+                    </button>
+                </div>
+                <pre class="wsp-code-area" id="wsp-code-openclaw"><?php echo esc_html( $openclaw_json ); ?></pre>
+            </div>
+        </div>
         <div class="wsp-tab-panel" id="wsp-tab-antigravity">
             <div class="wsp-config-box">
                 <div class="wsp-instructions">
@@ -170,6 +205,7 @@ function wsp_mcp_config_page() {
         makeCopyBtn('wsp-copy-cursor',      'wsp-code-cursor');
         makeCopyBtn('wsp-copy-codex',       'wsp-code-codex');
         makeCopyBtn('wsp-copy-antigravity', 'wsp-code-antigravity');
+        makeCopyBtn('wsp-copy-openclaw',    'wsp-code-openclaw');
     });
     </script>
     <?php
