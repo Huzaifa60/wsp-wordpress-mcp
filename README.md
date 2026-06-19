@@ -2,7 +2,7 @@
 
 > **By [WebSensePro](https://websensepro.com) — Official Shopify Partner & WordPress Agency**
 
-[![Version](https://img.shields.io/badge/Version-1.2.0-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
+[![Version](https://img.shields.io/badge/Version-1.3.0-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
 [![YouTube](https://img.shields.io/badge/YouTube-140K%2B%20Subscribers-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/websensepro)
 [![License](https://img.shields.io/badge/License-GPL%202.0-green?style=for-the-badge)](LICENSE)
 
@@ -14,8 +14,15 @@
 
 ---
 
-## ✨ What's New in v1.2.0
+## ✨ What's New in v1.3.0
 
+- 🔍 **Yoast SEO Abilities** — read and update Yoast SEO title, meta description, and focus keyphrase for any post or page directly via AI agent. Yoast SEO group only appears when Yoast is active on your site.
+
+## Previous Releases
+
+**v1.2.1** — Add OpenClaw tab to Config Files page
+
+**v1.2.0**
 - ⚡ **Elementor Abilities** — list pages, get page structure, find/get/update elements, add widgets & containers, remove elements
 - 🗂️ **Modular Plugin Architecture** — refactored into `includes/` with separate files per feature group
 - 🔧 **Auto Config Generator** — generates ready-to-paste configs for Claude Desktop & Codex from wp-admin
@@ -37,6 +44,12 @@
 | Read Users | read |
 | Search Content | read |
 | Read Site Info & Active Plugins | read |
+
+### Yoast SEO *(requires Yoast SEO plugin)*
+| Ability | Access |
+|---------|--------|
+| Get Yoast SEO Meta (title, meta description, focus keyphrase) | read |
+| Update Yoast SEO Meta | write |
 
 ### Elementor *(requires Elementor plugin)*
 | Ability | Access |
