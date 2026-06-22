@@ -1,10 +1,32 @@
 # WSP WordPress MCP — Agent & Contributor Guide (AGENTS.md)
 
+---
+
+## ⚠️ MANDATORY FIRST STEP FOR ALL AI AGENTS ⚠️
+
+**Before reading any source code, before asking any questions, before writing a single line:**
+
+1. **Read `AGENTS.md`** (this file) — current architecture, all tools, all hooks, security patterns, naming conventions.
+2. **Read `CHANGELOG.md`** — what changed in every version and why; migration notes per release.
+3. **Read `HISTORY.md`** — why the native MCP server was built, what alternatives were rejected, and the milestone plan rationale.
+
+These three files give you complete project understanding without touching the codebase.
+**Do not read source files until you have read all three.** The files are kept accurate by the team's update rule (see below).
+
+### Update rule — enforced on every change
+
+> **After every code change, you MUST update both `AGENTS.md` and `CHANGELOG.md` in the same commit/PR.**
+>
+> - `AGENTS.md`: update any section whose facts changed (architecture, tool table, hooks, constants, admin UX, security patterns, directory structure).
+> - `CHANGELOG.md`: add a bullet under the correct version (or create a new `## [X.Y.Z] — YYYY-MM-DD` block) describing what changed and why.
+> - `HISTORY.md`: only update when a significant architectural decision is made. Day-to-day feature work does not belong there.
+>
+> Agents that skip this step leave the next agent flying blind. Don't do it.
+
+---
+
 > **This file is the universal source of truth for every agent and human working on this plugin**
-> (Claude, Cursor, Codex, Gemini/Antigravity, OpenClaw, and the human team). Keep it accurate:
-> when you change architecture, hooks, tools, or admin UX, **update this file in the same change.**
-> The current-state docs are at the top; the historical research/decision/milestone log is in the
-> **Appendix** at the bottom.
+> (Claude, Cursor, Codex, Gemini/Antigravity, OpenClaw, and the human team).
 
 ## What this plugin is
 
@@ -257,6 +279,20 @@ $base = [
 - `get-site-info` returns: `name`, `url`, `tagline`, `admin_email`, `wp_version`, `language`.
 - `get-plugins` loads `wp-admin/includes/plugin.php` if needed, then intersects all plugins with active list.
 
+#### Yoast SEO (`yoast.php`)
+
+Only registered if `wsp_yoast_is_active()` (`defined('WPSEO_VERSION') || class_exists('WPSEO_Meta')`). Both abilities require `edit_posts` capability.
+
+| Ability key | Label | Access | Default | Inputs |
+|---|---|---|---|---|
+| `wsp/yoast-get-seo` | Get Yoast SEO Meta | read | OFF | `id`* (int — post/page ID) |
+| `wsp/yoast-update-seo` | Update Yoast SEO Meta | write | OFF | `id`*, `seo_title`, `meta_description`, `focus_keyphrase` (at least one required) |
+
+- `get-seo` returns: `post_id`, `post_type`, `title` (WP title), `seo_title`, `meta_description`, `focus_keyphrase`, `url`.
+- `update-seo` rebuilds the Yoast indexable (`do_action('wp_insert_post', …)`) after saving.
+- Falls back to direct post-meta keys (`_yoast_wpseo_title`, `_yoast_wpseo_metadesc`, `_yoast_wpseo_focuskw`) when `WPSEO_Meta` class is unavailable.
+- Only supports `post` and `page` post types; returns `WP_Error` for others.
+
 #### Elementor (`elementor.php`)
 
 Only registered if `class_exists('\Elementor\Plugin')`. All abilities require `edit_posts` capability.
@@ -381,7 +417,7 @@ Keep business logic in `includes/abilities/*.php`; keep transport wiring in `inc
 
 **Branch / PR workflow:**
 - Branch off `main`; never commit straight to `main`.
-- One logical change per PR; update `AGENTS.md` + `readme.txt` changelog in the same PR.
+- One logical change per PR; update `AGENTS.md`, `CHANGELOG.md`, and `readme.txt` changelog in the same PR.
 - End commit messages with the project's Co-Authored-By trailer when an agent made the change.
 
 **Testing note:** there is **no PHP runtime on the primary dev machine** — PHP cannot be linted or
@@ -408,219 +444,14 @@ remove that guard without a deliberate deprecation.
 5. Call `wsp_register_*_abilities()` from `wsp_mcp_register_all_abilities()` in the main file if it's a new file.
 
 ---
----
 
-# Appendix: History & Rationale (historical — for context only)
+## Historical research & architectural decisions
 
-> The sections below are the **historical record** of how v2.0 was researched, decided, and built
-> (captured 2026-06-19). They are kept so future agents/contributors don't re-research the same
-> ground. They describe decisions and a milestone plan that are now **implemented** — for current
-> behavior, trust the sections above, not this appendix.
+The full rationale for why the native MCP server was built (transport options evaluated, two
+WP.org-approved precedents studied, Path A/B/C analysis, v2.0 milestone plan) lives in
+**[HISTORY.md](./HISTORY.md)**.
 
-## MCP Transport Architecture — Research & Strategic Decision (2026-06-19)
+Read it when you need to understand *why* the architecture is the way it is, or before
+proposing a significant change to the transport layer. For day-to-day feature work, the
+sections above are sufficient.
 
-> This section captures a full investigation into how this plugin connects to AI clients,
-> the dependency it currently relies on, WordPress.org approval implications, and the
-> decided direction. **Saved here so future sessions do not need to re-research.**
-
-### The current dependency chain (what made the pre-2.0 plugin work)
-
-The pre-2.0 plugin **did not implement any MCP transport itself**. It only registered "abilities"
-via `wp_register_ability()`. For those abilities to be reachable by an AI client, the site
-needed a **three-package stack**, none of which is on the WordPress.org plugin directory:
-
-| Package | Role | Status |
-|---|---|---|
-| `wordpress/abilities-api` | Provides `wp_register_ability()`, `wp_register_ability_category()`, `wp_abilities_api_init` — **the functions this plugin calls directly** | pre-1.0, GPL-2.0, designed to merge into WP core |
-| `wordpress/mcp-adapter` | Bridges the Abilities API to the MCP protocol (the transport/endpoint) | v0.5.0, `minimum-stability: dev`, PHP 7.4+, GPL-2.0-or-later, `Requires at least: 6.9` |
-| `wordpress/php-mcp-schema` | mcp-adapter's transitive dependency | v0.1.0 |
-
-Key facts established by inspecting the repos directly:
-- `mcp-adapter`'s `composer.json` requires only `php-mcp-schema` — it does **not** declare a
-  Composer dependency on `abilities-api`. The Abilities API is expected to be present separately
-  (it is a core-track feature plugin, likely already partly in WP 6.9 core — which is why the
-  current 2-plugin setup works at all with just mcp-adapter + WP 6.9).
-- **Neither `abilities-api` nor `mcp-adapter` is on the WordPress.org plugin directory** (verified
-  via `api.wordpress.org/plugins/info`). This means the official `Requires Plugins:` header
-  (WP 6.5+, the sanctioned way to declare a plugin dependency) **cannot** be used — it only
-  resolves plugins hosted on the WP.org directory by slug.
-- All three are GPL-2.0-or-later, so bundling them is **license-safe**.
-- The client connection today also requires the user to run the
-  `@automattic/mcp-wordpress-remote` npm bridge (needs Node.js) — a far bigger adoption barrier
-  for non-technical users than "install a second plugin."
-
-### The three paths considered
-
-- **Path A — Keep the dependency, harden it.** Add a `function_exists('wp_register_ability')` /
-  `class_exists('WP\\MCP\\Core\\McpAdapter')` guard so the plugin degrades gracefully (admin
-  notice) instead of fataling when the adapter is absent. Low effort, stays on the official
-  Abilities-API track. **But:** still needs the companion plugin + Node.js bridge, and is the
-  **riskiest for WP.org approval** because the plugin is non-functional standalone and can't
-  declare its GitHub-only dependency via the official header.
-- **Path B — Bundle all three packages via Composer.** Single-plugin install, but you vendor
-  three pre-1.0 dev-stability core-bound packages (collision risk when the Abilities API lands in
-  core; ongoing re-bundling), **and you still need the npm bridge.** Worst effort-to-payoff. **Ruled out.**
-- **Path C — Go native: implement MCP yourself, no dependency.** Own the REST transport,
-  JSON-RPC dispatch, session store, and an OAuth 2.0 server. Self-contained single plugin,
-  **direct Claude/ChatGPT connection via "Add Custom Connector" (no Node.js)**, cleanest WP.org
-  submission. **Cost:** you own the protocol/client-quirk maintenance treadmill.
-
-### Decisive evidence — two WP.org-approved precedents both chose native (Path C)
-
-Two independently-built, WordPress.org-approved MCP plugins were studied as references.
-**Both rejected `mcp-adapter`/Abilities-API and built native MCP servers.**
-
-#### Reference Plugin A (PHP 7.4+, WP 5.8+)
-- Self-contained: hand-rolled `spl_autoload_register`, own namespace, no Composer.
-- Transport: `register_rest_route('<ns>/v1', '/mcp', …)` with `permission_callback => '__return_true'`,
-  auth enforced **inside** the handler (`Server::validate_auth`). Streamable HTTP (2025-11-25 spec),
-  JSON-RPC dispatch (`initialize`, `tools/list`, `tools/call`, `ping`).
-- Native **OAuth 2.0 server** via rewrite rules at domain root (`.well-known/oauth-protected-resource`,
-  `.well-known/oauth-authorization-server`, `/authorize`, `/token`, `/register` + PKCE).
-- Tools: one big inline array in `get_tools()` + `execute_tool()` switch; integrations (Woo, Elementor, ACF…) add tools conditionally.
-- Dual auth: API key (custom header or `Authorization: Bearer`) OR OAuth bearer token; DB-backed sessions; rate limiting; Origin validation (DNS-rebinding guard).
-- Hard-won production lessons in its comments: Cache-Control `no-store` on every response (edge-cache
-  poisoning on Cloudflare/LiteSpeed), per-User-Agent dispatch on `GET /mcp` (4 iterations to satisfy
-  Claude.ai/ChatGPT/mcp-remote), DB-backed sessions (object-cache eviction), per-tool capability
-  checks (CVSS 8.1 fix).
-
-#### Reference Plugin B (PHP 8.0+, WP 6.2+) — the cleanest template
-- Self-contained: `require_once` of class files + **one file per tool** under
-  `includes/tools/wp/` and `includes/tools/bridge/`. No Composer/vendor.
-- Transport: own REST endpoint `/wp-json/<ns>/v1/message` (Streamable HTTP + JSON-RPC).
-  One HTTP request per call — explicitly "works on shared hosting" (no long-lived SSE).
-- Built-in **OAuth 2.0 server** (`/oauth/authorize`, `/token`, `/register`, PKCE) → connects
-  directly via Claude's **"Add Custom Connector"** by pasting the site URL. **No Node.js bridge** for
-  that path (a `mcp-remote` stdio snippet is still offered for Claude-Desktop config-file users).
-- **Three auth paths:** Application Password, plugin-generated Bearer key, and OAuth token.
-- Tool registration is trivially modular — the exact pattern to copy:
-  ```php
-  <Server>::register_tool(
-      'get_site_info',
-      [ 'description' => '…', 'inputSchema' => [ 'type'=>'object', 'properties'=>new stdClass() ] ],
-      function ( array $args ): array|WP_Error {
-          return <Server>::ok([ /* … */ ]);
-      }
-  );
-  ```
-  To add a tool: write a file, `require_once` it, add the name to a `TOOL_NAMES` constant + a
-  one-line `TOOL_MIGRATION_BACKFILL` entry (so upgraded installs enable it).
-- **Freemium model proven on WP.org:** ~45 tools work standalone; an optional API key unlocks
-  ~12 more "bridge" tools. The external API is disclosed in an **"External Services"** readme section
-  and the plugin is **fully functional without it** — the reason WP.org approved it.
-- Other WP.org-compliance patterns worth copying: SSRF guards on URL media ingestion (reject
-  private/loopback/cloud-metadata IPs, re-validate redirects), MIME verified against real bytes,
-  filename denylist (`.php/.phtml/.htaccess`), credential-key denylist on post-meta writes,
-  `require_cap()` capability enforcement, dbDelta-idempotent migrations gated by a `db_version`
-  option, change-receipt + rollback audit trail.
-
-### DECISION (2026-06-19): Go native (Path C), model on Reference Plugin B
-
-**Rationale:**
-1. **WP.org approval** — the two approved precedents are both native and self-functional. A plugin
-   that "requires a GitHub-only companion plugin" is the riskiest path (non-functional standalone,
-   no valid `Requires Plugins` header). Native is the proven-approvable architecture.
-2. **Feature velocity** — the one-file-per-tool registry is the same modular structure already
-   preferred here, and the per-feature cost is tiny.
-3. **End-user UX** — native + OAuth means users paste a URL into Claude/ChatGPT and install
-   **nothing else** (no second plugin, no Node.js). This is the biggest adoption win, especially
-   for a non-developer audience.
-4. The current dependency stack is pre-1.0, dev-stability, and core-bound — building on a moving
-   target headed for core is the wrong long-term bet.
-
-**The rewrite is of the transport layer, not the business logic.** The existing ability *logic*
-(the `wsp_execute_*` functions for posts/pages/taxonomy/media/Elementor/Yoast, etc.) is reusable —
-the change is swapping "register with mcp-adapter via `wp_register_ability()`" for "register with
-our own MCP server + tool registry."
-
-**Planned v2.0 milestones (native architecture):**
-1. REST MCP endpoint + JSON-RPC dispatcher (`initialize`, `tools/list`, `tools/call`, `ping`).
-2. Tool registry (`register_tool()` pattern) — port existing `wsp_execute_*` logic into tool files.
-3. DB-backed session store + Origin validation + rate limiting.
-4. OAuth 2.0 authorization server (authorize/token/register + PKCE) + Application Password auth.
-5. WP.org hardening: External-Services disclosure (only if an external API is added), capability
-   enforcement, SSRF guards on any upload tool, idempotent migrations, `readme.txt`.
-
-**Interim:** keep v1.x on Path A (add the `function_exists` guard so it never fatals standalone)
-so existing installs and the published YouTube tutorials remain valid until v2.0 ships.
-
-**MCP spec version note:** the protocol moves ~quarterly (`2024-11-05 → 2025-03-26 → 2025-06-18 →
-2025-11-25`). A native server must echo the client's requested `protocolVersion` when recognized
-and fall back to a known-good default otherwise. This maintenance is the main cost of going native,
-but both precedents show it is sustainable.
-
----
-
-## v2.0 Native Build — Milestone Plan (2026-06-19)
-
-Eight milestones, dependency-ordered, each independently testable (MCP Inspector against the
-local endpoint). The existing `wsp_execute_*` ability logic (~1,222 lines) is reused; the rewrite
-is of the transport layer only.
-
-### Target structure (v2.0)
-
-```
-wsp-wordpress-mcp/
-├── wsp-wordpress-mcp.php          ← loader; dual-mode boot
-├── readme.txt                     ← WP.org
-├── uninstall.php
-└── includes/
-    ├── dependency.php             ← M0 transport detection + admin notice (shipped in v1.x)
-    ├── registry.php               ← KEEP (gated behind function_exists) — dual-mode
-    ├── server/
-    │   ├── class-mcp-server.php    ← REST endpoint + JSON-RPC dispatch + tool registry
-    │   ├── class-session-store.php ← DB-backed sessions
-    │   ├── class-auth.php          ← API key + App Password + bearer + caps
-    │   └── class-oauth.php         ← OAuth 2.0 AS + PKCE + token store
-    ├── tools/                      ← one file per tool group (ports wsp_execute_*)
-    └── admin/                      ← config/connection page + setup wizard
-```
-
-### Milestones
-
-| # | Milestone | New lines | Depends on | Exit criteria |
-|---|---|---|---|---|
-| **M0** | Interim v1.x safety guard | ~30 | — | `function_exists('wp_register_ability')` guard so standalone install never fatals; admin notice when transport absent. Ships in v1.x now. **(DONE — `includes/dependency.php`.)** |
-| **M1** | MCP transport core | ~500–700 | M0 | MCP Inspector can `initialize` (echo `protocolVersion`) → `tools/list` → `tools/call` on a test tool. JSON-RPC dispatch (`initialize`, `tools/list`, `tools/call`, `ping`, empty `resources/list`/`prompts/list`), `no-store` headers, CORS/OPTIONS, Origin validation, rate limiting. |
-| **M2** | Tool registry + port existing logic | ~400–600 | M1 | All current abilities callable as native tools. `register_tool()` registry; one file per group reusing existing `wsp_execute_*` bodies; per-tool toggles reuse `wsp_mcp_abilities`; `TOOL_NAMES` + backfill migration. |
-| **M3** | Session store (DB-backed) | ~150–200 | M1 | `initialize` issues `Mcp-Session-Id`; later calls validated; credential fingerprint binding; daily cron cleanup; expiry works. |
-| **M4** | Auth completion | ~150–250 | M1 | Three non-OAuth paths: plugin API key, `Authorization: Bearer`, Application Password (Basic). Per-tool capability enforcement; admin-user mapping. |
-| **M5** | OAuth 2.0 server *(deferrable to v2.1)* | ~500–800 | M1, M4 | Claude "Add Custom Connector" via site URL completes OAuth + connects. `.well-known/*`, `/authorize`, `/token`, `/register`, PKCE, token-store table, consent screen, external-redirect handling. |
-| **M6** | Admin / connection UX | ~150–250 | M2, M4 | User copies a working config from wp-admin: native endpoint URL, API key, "Add Custom Connector" steps, `mcp-remote` stdio snippet, per-site connection name. |
-| **M7** | WP.org hardening + release | ~150–250 | all | Passes Plugin Check; `readme.txt`; idempotent migrations gated by `db_version`; SSRF guards on any upload tool; sanitize/escape/cap pass; **dual-mode verified (no breakage)**; uninstall cleanup. External-Services disclosure only if an external API is added. |
-
-### Status (2026-06-19)
-
-**v2.0 MVP built — M0–M4, M6, M7 complete; M5 (OAuth) deferred to v2.1.** Pending PHP lint
-+ live testing in a WordPress environment (no PHP runtime on the dev machine).
-
-New files: `includes/server/class-mcp-server.php` (transport + JSON-RPC dispatch + tool
-registry), `includes/server/class-session-store.php` (DB sessions), `includes/server/class-auth.php`
-(API key + Application Password + bearer + caps), `includes/tools/native-tools.php` (wraps every
-`wsp_execute_*` as a native tool), `includes/admin/connection-page.php` (MCP > Connection),
-`readme.txt`. Endpoint: `/wp-json/wsp-mcp/v1/mcp`. Version bumped to 2.0.0; `Requires PHP 7.4`,
-`Requires at least 6.2`. `dependency.php` repurposed: `wsp_mcp_abilities_api_available()` gates
-dual-mode; native transport always available. Dual-mode preserved (Abilities path behind
-`function_exists`).
-
-### Shipping options
-
-- **MVP (no OAuth):** M0–M4 + M6 + M7, skip M5 → **~1,300–1,800 lines.** Connects via Claude Desktop config + API key / App Password.
-- **Full (URL-paste UX):** all milestones → **~2,000–2,700 lines.** Adds direct "Add Custom Connector".
-- **Recommendation:** ship MVP as v2.0; add M5 as v2.1 (OAuth is the biggest/riskiest chunk and not required for a working release).
-
-### Critical path
-
-```
-M0 ─► M1 ─┬─► M2 ──────────┐
-          ├─► M3           ├─► M6 ─► M7 ─► (v2.0 MVP)
-          └─► M4 ─► M5 ────┘         └─► (v2.1 adds M5)
-```
-M2/M3/M4 parallelizable once M1 lands. M5 gates only the full release.
-
-### No-breakage guarantee (dual-mode)
-
-v2.0 keeps `registry.php`'s `wp_register_ability()` calls **behind a `function_exists` guard** AND
-registers the native endpoint. Existing mcp-adapter users keep their current connection untouched;
-new users get the native one-plugin path. No bundled adapter → no class collision → no fatal. The
-guard is M0, already shipping in v1.x. Deprecate the Abilities path in a later version.
