@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
+
 function wsp_woo_sideload_image_by_url( $url, $post_id ) {
     if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
         return false;
@@ -274,9 +275,9 @@ function wsp_register_woocommerce_abilities() {
     }
 }
 
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 // EXECUTE CALLBACKS
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 
 function wsp_execute_woo_get_products( $input ) {
     $limit  = isset( $input['limit'] ) ? intval( $input['limit'] ) : 10;
@@ -525,9 +526,15 @@ function wsp_execute_woo_create_coupon( $input ) {
 function wsp_execute_woo_list_coupons( $input ) {
     $limit = isset( $input['limit'] ) ? intval( $input['limit'] ) : 20;
     
-    $coupons = wc_get_coupons( array( 'limit' => $limit ) );
+    $coupon_posts = get_posts( array(
+        'post_type'      => 'shop_coupon',
+        'posts_per_page' => $limit,
+        'post_status'    => 'any',
+    ) );
+
     $result = array();
-    foreach ( $coupons as $c ) {
+    foreach ( $coupon_posts as $post ) {
+        $c = new WC_Coupon( $post->ID );
         $result[] = array(
             'id'            => $c->get_id(),
             'code'          => $c->get_code(),
@@ -664,13 +671,14 @@ function wsp_execute_woo_moderate_review( $input ) {
     $review_id = intval( $input['id'] );
     $action    = sanitize_text_field( wp_unslash( $input['action'] ) ); 
     
+    $review = get_comment( $review_id );
+    if ( ! $review ) {
+        return array( 'success' => false, 'error' => 'Review not found.' );
+    }
+
     if ( 'reply' === $action ) {
         if ( empty( $input['reply_text'] ) ) {
             return array( 'success' => false, 'error' => 'Reply text is required for reply action.' );
-        }
-        $review = get_comment( $review_id );
-        if ( ! $review ) {
-            return array( 'success' => false, 'error' => 'Review not found.' );
         }
         
         $user = wp_get_current_user();
@@ -790,3 +798,4 @@ function wsp_woo_bypass_local_ssl_verify( $args, $url ) {
     return $args;
 }
 
+?>
