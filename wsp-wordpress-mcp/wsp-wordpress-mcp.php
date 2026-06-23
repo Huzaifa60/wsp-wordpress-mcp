@@ -37,6 +37,7 @@ require_once WSP_MCP_DIR . 'includes/abilities/search.php';
 require_once WSP_MCP_DIR . 'includes/abilities/site.php';
 require_once WSP_MCP_DIR . 'includes/abilities/yoast.php';
 require_once WSP_MCP_DIR . 'includes/abilities/elementor.php';
+require_once WSP_MCP_DIR . 'includes/abilities/woocommerce.php';
 
 add_action( 'admin_menu',                       'wsp_mcp_add_menu' );
 add_action( 'admin_init',                       'wsp_mcp_register_settings' );
@@ -103,4 +104,7 @@ function wsp_mcp_register_all_abilities() {
     wsp_register_site_abilities();
     wsp_register_yoast_abilities();
     wsp_register_elementor_abilities();
+    if ( class_exists( 'WooCommerce' ) ) {
+        wsp_register_woocommerce_abilities();
+    }
 }
