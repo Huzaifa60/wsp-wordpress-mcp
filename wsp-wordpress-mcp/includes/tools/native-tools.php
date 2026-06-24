@@ -247,6 +247,192 @@ function wsp_mcp_register_native_tools() {
 		) );
 	}
 
+
+	// ---- WooCommerce (only when WooCommerce is active) ----
+	if ( class_exists( 'WooCommerce' ) ) {
+		WSP_MCP_Server::register_tool( 'wsp_woo_get_products', array(
+			'description' => 'List products with filtering and pagination.',
+			'inputSchema' => array( 'type' => 'object', 'properties' => array(
+				'limit'  => array( 'type' => 'integer', 'description' => 'Limit. Default 10.' ),
+				'status' => array( 'type' => 'string', 'description' => 'publish | draft | any.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_get_products',
+			'capability'  => 'edit_posts',
+			'enable_key'  => 'wsp/woo-get-products',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_get_product', array(
+			'description' => 'Get single product details by ID.',
+			'inputSchema' => array( 'type' => 'object', 'required' => array( 'id' ), 'properties' => array(
+				'id' => array( 'type' => 'integer', 'description' => 'Product ID.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_get_product',
+			'capability'  => 'edit_posts',
+			'enable_key'  => 'wsp/woo-get-product',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_create_product', array(
+			'description' => 'Create a new simple or variable product in the store.',
+			'inputSchema' => array( 'type' => 'object', 'required' => array( 'name', 'regular_price' ), 'properties' => array(
+				'name'          => array( 'type' => 'string', 'description' => 'Product name.' ),
+				'regular_price' => array( 'type' => 'string', 'description' => 'Regular price.' ),
+				'sale_price'    => array( 'type' => 'string', 'description' => 'Sale/discount price (optional).' ),
+				'description'   => array( 'type' => 'string', 'description' => 'Product description.' ),
+				'sku'           => array( 'type' => 'string', 'description' => 'Unique SKU.' ),
+				'status'        => array( 'type' => 'string', 'description' => 'publish | draft. Default draft.' ),
+				'type'          => array( 'type' => 'string', 'description' => 'simple | variable. Default simple.' ),
+				'image_url'     => array( 'type' => 'string', 'description' => 'Direct image URL to download and set as product featured image.' ),
+				'attributes'    => array(
+					'type' => 'array',
+					'description' => 'Attributes for variable products. Array of objects containing "name" and "options" array. E.g. [{"name": "color", "options": ["Red", "Blue"]}]',
+					'items' => array(
+						'type' => 'object',
+						'properties' => array(
+							'name'    => array( 'type' => 'string' ),
+							'options' => array( 'type' => 'array', 'items' => array( 'type' => 'string' ) ),
+						)
+					)
+				),
+				'stock_qty'     => array( 'type' => 'integer', 'description' => 'Manage stock quantity.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_create_product',
+			'capability'  => 'publish_posts',
+			'enable_key'  => 'wsp/woo-create-product',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_create_variation', array(
+			'description' => 'Creates a variation for an existing variable product.',
+			'inputSchema' => array( 'type' => 'object', 'required' => array( 'parent_id', 'regular_price', 'attributes' ), 'properties' => array(
+				'parent_id'     => array( 'type' => 'integer', 'description' => 'The ID of the parent variable product.' ),
+				'regular_price' => array( 'type' => 'string', 'description' => 'Variation regular price.' ),
+				'sale_price'    => array( 'type' => 'string', 'description' => 'Variation sale/discount price (optional).' ),
+				'sku'           => array( 'type' => 'string', 'description' => 'Variation unique SKU.' ),
+				'image_url'     => array( 'type' => 'string', 'description' => 'Direct image URL to download for this specific variation.' ),
+				'attributes'    => array( 'type' => 'object', 'description' => 'Key-value pairs of attributes, e.g. {"size": "large", "color": "blue"}' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_create_variation',
+			'capability'  => 'publish_posts',
+			'enable_key'  => 'wsp/woo-create-variation',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_update_product', array(
+			'description' => 'Update an existing product details.',
+			'inputSchema' => array( 'type' => 'object', 'required' => array( 'id' ), 'properties' => array(
+				'id'            => array( 'type' => 'integer', 'description' => 'The ID of the product to update.' ),
+				'name'          => array( 'type' => 'string', 'description' => 'Product name.' ),
+				'regular_price' => array( 'type' => 'string', 'description' => 'Regular price.' ),
+				'sale_price'    => array( 'type' => 'string', 'description' => 'Sale/discount price.' ),
+				'description'   => array( 'type' => 'string', 'description' => 'Product description.' ),
+				'sku'           => array( 'type' => 'string', 'description' => 'Unique SKU.' ),
+				'stock_qty'     => array( 'type' => 'integer', 'description' => 'Manage stock quantity.' ),
+				'stock_status'  => array( 'type' => 'string', 'description' => 'instock | outofstock.' ),
+				'image_url'     => array( 'type' => 'string', 'description' => 'Direct image URL to download and replace featured image.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_update_product',
+			'capability'  => 'edit_posts',
+			'enable_key'  => 'wsp/woo-update-product',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_list_orders', array(
+			'description' => 'List recent orders with status filtering.',
+			'inputSchema' => array( 'type' => 'object', 'properties' => array(
+				'limit'  => array( 'type' => 'integer', 'description' => 'Number of orders. Default 10.' ),
+				'status' => array( 'type' => 'string', 'description' => 'any | processing | completed | pending.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_list_orders',
+			'capability'  => 'edit_posts',
+			'enable_key'  => 'wsp/woo-list-orders',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_update_order_status', array(
+			'description' => 'Update the status of an order.',
+			'inputSchema' => array( 'type' => 'object', 'required' => array( 'id', 'status' ), 'properties' => array(
+				'id'     => array( 'type' => 'integer', 'description' => 'Order ID.' ),
+				'status' => array( 'type' => 'string', 'description' => 'pending | processing | on-hold | completed | cancelled | refunded.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_update_order_status',
+			'capability'  => 'edit_posts',
+			'enable_key'  => 'wsp/woo-update-order-status',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_refund_order', array(
+			'description' => 'Create a full or partial refund for an order.',
+			'inputSchema' => array( 'type' => 'object', 'required' => array( 'order_id', 'amount' ), 'properties' => array(
+				'order_id' => array( 'type' => 'integer', 'description' => 'The ID of the order to refund.' ),
+				'amount'   => array( 'type' => 'string', 'description' => 'Refund amount, e.g. 10.50.' ),
+				'reason'   => array( 'type' => 'string', 'description' => 'Reason for refund.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_refund_order',
+			'capability'  => 'manage_woocommerce',
+			'enable_key'  => 'wsp/woo-refund-order',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_create_coupon', array(
+			'description' => 'Create a new coupon code (percentage or fixed discount).',
+			'inputSchema' => array( 'type' => 'object', 'required' => array( 'code', 'amount' ), 'properties' => array(
+				'code'          => array( 'type' => 'string', 'description' => 'Coupon code name, e.g. SUMMER20.' ),
+				'amount'        => array( 'type' => 'string', 'description' => 'Discount amount, e.g. 20 or 15.50.' ),
+				'discount_type' => array( 'type' => 'string', 'description' => 'percent | fixed_cart | fixed_product. Default percent.' ),
+				'expiry_date'   => array( 'type' => 'string', 'description' => 'Expiry date format YYYY-MM-DD (optional).' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_create_coupon',
+			'capability' => 'manage_woocommerce',
+			'enable_key'  => 'wsp/woo-create-coupon',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_list_coupons', array(
+			'description' => 'List all active store coupons with usage stats.',
+			'inputSchema' => array( 'type' => 'object', 'properties' => array(
+				'limit' => array( 'type' => 'integer', 'description' => 'Number of coupons to fetch. Default 20.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_list_coupons',
+			'capability' => 'manage_woocommerce',
+			'enable_key'  => 'wsp/woo-list-coupons',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_create_order_note', array(
+			'description' => 'Add a note to an existing order (internal or customer-facing).',
+			'inputSchema' => array( 'type' => 'object', 'required' => array( 'id', 'note' ), 'properties' => array(
+				'id'        => array( 'type' => 'integer', 'description' => 'Order ID.' ),
+				'note'      => array( 'type' => 'string', 'description' => 'The note text.' ),
+				'is_public' => array( 'type' => 'boolean', 'description' => 'True to make the note visible to the customer (email/account), false for internal only.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_create_order_note',
+			'capability'  => 'edit_posts',
+			'enable_key'  => 'wsp/woo-create-order-note',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_list_customers', array(
+			'description' => 'List registered customers with billing details.',
+			'inputSchema' => array( 'type' => 'object', 'properties' => array(
+				'limit' => array( 'type' => 'integer', 'description' => 'Number of customers to list. Default 10.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_list_customers',
+			'capability'  => 'manage_woocommerce',
+			'enable_key'  => 'wsp/woo-list-customers',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_report_sales', array(
+			'description' => 'Get sales, orders, net revenue, and average order value reports.',
+			'inputSchema' => array( 'type' => 'object', 'properties' => array(
+				'days' => array( 'type' => 'integer', 'description' => 'Number of past days to report. Default 30.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_report_sales',
+			'capability'  => 'edit_posts',
+			'enable_key'  => 'wsp/woo-report-sales',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_get_low_stock', array(
+			'description' => 'Inspect and list products running low on stock.',
+			'inputSchema' => array( 'type' => 'object', 'properties' => array(
+				'threshold' => array( 'type' => 'integer', 'description' => 'Stock alert threshold. Default 10.' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_get_low_stock',
+			'capability'  => 'edit_posts',
+			'enable_key'  => 'wsp/woo-get-low-stock',
+		) );
+		WSP_MCP_Server::register_tool( 'wsp_woo_moderate_review', array(
+			'description' => 'Approve, spam, trash, or reply to product reviews.',
+			'inputSchema' => array( 'type' => 'object', 'required' => array( 'id', 'action' ), 'properties' => array(
+				'id'         => array( 'type' => 'integer', 'description' => 'The review/comment ID.' ),
+				'action'     => array( 'type' => 'string', 'description' => 'approve | spam | trash | reply' ),
+				'reply_text' => array( 'type' => 'string', 'description' => 'The reply text content (required only for reply action).' ),
+			) ),
+			'callback'    => 'wsp_execute_woo_moderate_review',
+			'capability'  => 'edit_posts',
+			'enable_key'  => 'wsp/woo-moderate-review',
+		) );
+	}
+
+
+
 	// ---- Elementor (only when Elementor is active) ----
 	if ( function_exists( 'wsp_elementor_is_active' ) && wsp_elementor_is_active() ) {
 		WSP_MCP_Server::register_tool( 'wsp_elementor_list_pages', array(
