@@ -2,11 +2,14 @@
 /**
  * Transport capability helpers.
  *
- * As of v2.0 the plugin ships its own native MCP server, so an MCP transport is
- * always available and no companion plugin is required. These helpers remain to
- * gate the optional dual-mode path: when the WordPress Abilities API is present,
- * the plugin ALSO registers via wp_register_ability() so connections made
- * through the MCP Adapter before v2.0 keep working unchanged.
+ * The plugin ships its own native MCP server (REST endpoint
+ * /wp-json/wsp-mcp/v1/mcp), so an MCP transport is always available and no
+ * companion plugin is required.
+ *
+ * As of v2.2.0 the legacy dual-mode path (registering abilities via the
+ * WordPress Abilities API / mcp-adapter when present) has been removed. This
+ * file is retained as a small stub: `wsp_mcp_transport_available()` is kept for
+ * back-compat and readability for any caller/add-on that references it.
  *
  * @package WSP_MCP
  */
@@ -14,22 +17,10 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
- * Whether the WordPress Abilities API is loaded.
- *
- * Gates the dual-mode wp_register_ability() registration. Must check the exact
- * function the plugin calls so we never invoke it when it is absent.
- *
- * @return bool
- */
-function wsp_mcp_abilities_api_available() {
-	return function_exists( 'wp_register_ability' );
-}
-
-/**
  * Whether the plugin can serve MCP at all.
  *
- * Always true in v2.0 — the native server provides the transport regardless of
- * any companion plugin. Retained for back-compat and readability.
+ * Always true — the native server provides the transport regardless of any
+ * companion plugin. Retained for back-compat and readability.
  *
  * @return bool
  */

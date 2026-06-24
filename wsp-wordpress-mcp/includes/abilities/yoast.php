@@ -82,46 +82,6 @@ function wsp_yoast_format_seo_data( $post ) {
 }
 
 // ─────────────────────────────────────────────
-// REGISTRATION
-// ─────────────────────────────────────────────
-
-function wsp_register_yoast_abilities() {
-    if ( ! wsp_yoast_is_active() ) {
-        return;
-    }
-
-    $base     = array( 'category' => 'wsp', 'output_schema' => array( 'type' => 'object' ), 'meta' => array( 'mcp' => array( 'public' => true ) ) );
-    $can_edit = function() { return current_user_can( 'edit_posts' ); };
-
-    if ( wsp_mcp_is_enabled( 'wsp/yoast-get-seo' ) ) {
-        wp_register_ability( 'wsp/yoast-get-seo', array_merge( $base, array(
-            'label'              => 'Get Yoast SEO Meta',
-            'description'        => 'Returns Yoast SEO title, meta description, and focus keyphrase for a post or page.',
-            'input_schema'       => array( 'type' => 'object', 'required' => array( 'id' ), 'properties' => array(
-                'id' => array( 'type' => 'integer', 'description' => 'Post or page ID.' ),
-            ) ),
-            'permission_callback' => $can_edit,
-            'execute_callback'   => 'wsp_execute_yoast_get_seo',
-        ) ) );
-    }
-
-    if ( wsp_mcp_is_enabled( 'wsp/yoast-update-seo' ) ) {
-        wp_register_ability( 'wsp/yoast-update-seo', array_merge( $base, array(
-            'label'              => 'Update Yoast SEO Meta',
-            'description'        => 'Updates Yoast SEO title, meta description, and/or focus keyphrase for a post or page.',
-            'input_schema'       => array( 'type' => 'object', 'required' => array( 'id' ), 'properties' => array(
-                'id'               => array( 'type' => 'integer', 'description' => 'Post or page ID.' ),
-                'seo_title'        => array( 'type' => 'string', 'description' => 'Yoast SEO title (supports variables like %%title%%).' ),
-                'meta_description' => array( 'type' => 'string', 'description' => 'Yoast meta description.' ),
-                'focus_keyphrase'  => array( 'type' => 'string', 'description' => 'Yoast focus keyphrase.' ),
-            ) ),
-            'permission_callback' => $can_edit,
-            'execute_callback'   => 'wsp_execute_yoast_update_seo',
-        ) ) );
-    }
-}
-
-// ─────────────────────────────────────────────
 // EXECUTE
 // ─────────────────────────────────────────────
 

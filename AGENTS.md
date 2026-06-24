@@ -31,14 +31,14 @@ These three files give you complete project understanding without touching the c
 ## What this plugin is
 
 **Plugin Name:** WebSensePro MCP Abilities  
-**Version:** 2.0.0  
+**Version:** 2.2.0  
 **Slug/prefix:** `wsp`  
 **WP option key:** `wsp_mcp_abilities`  
 **Constant prefix:** `WSP_MCP_`
 
 This is a WordPress plugin that exposes WordPress content to AI agents (Claude, Cursor, Codex, etc.) via the **Model Context Protocol (MCP)**. The site admin controls which operations ("tools"/"abilities") are active via a toggle UI in **WP Admin > MCP > Settings**.
 
-**As of v2.0 the plugin ships its OWN native MCP server** (REST endpoint `/wp-json/wsp-mcp/v1/mcp`) — no companion plugin or WordPress MCP Adapter is required. It still *also* registers via the WordPress Abilities API **when that API is present** (dual-mode), so connections made through the MCP Adapter before v2.0 keep working. See **"## v2.0 Architecture (CURRENT — read this first)"** below before changing transport/tool code.
+**As of v2.0 the plugin ships its OWN native MCP server** (REST endpoint `/wp-json/wsp-mcp/v1/mcp`) — no companion plugin or WordPress MCP Adapter is required. **As of v2.2 the plugin is native-only:** the former dual-mode Abilities-API registration path and the MCP > Config Files page have been removed (see CHANGELOG `[2.2.0]`). See **"## v2.0 Architecture (CURRENT — read this first)"** below before changing transport/tool code.
 
 ---
 
@@ -91,9 +91,7 @@ true in v2.0).
    `includes/tools/native-tools.php` (description, inputSchema, callback, capability, enable_key).
 3. Add the ability's metadata to `wsp_mcp_ability_registry()` in `registry.php` (so the
    admin toggle exists; set `default`).
-4. (Dual-mode, optional) also add the `wp_register_ability()` block in the abilities file so
-   pre-2.0 MCP-Adapter users get it too.
-5. Enable it in MCP > Settings, then **reconnect the client** (see gotcha below).
+4. Enable it in MCP > Settings, then **reconnect the client** (see gotcha below).
 
 ### Gotcha: client tool-list caching
 
@@ -111,7 +109,7 @@ wsp-wordpress-mcp/
     ├── readme.txt              ← WP.org readme (v2.0)
     ├── uninstall.php           ← deletes wsp_mcp_* options + drops sessions table
     └── includes/
-        ├── dependency.php      ← transport-capability helpers (abilities-API detection)
+        ├── dependency.php      ← stub: wsp_mcp_transport_available() (always true) — kept for back-compat
         ├── registry.php        ← central ability registry + settings helpers
         ├── server/             ← v2.0 native MCP server
         │   ├── class-mcp-server.php     ← transport + JSON-RPC dispatch + tool registry
@@ -120,12 +118,11 @@ wsp-wordpress-mcp/
         ├── tools/
         │   └── native-tools.php ← registers every wsp_execute_* as a native MCP tool
         ├── admin/
-        │   ├── settings-page.php    ← toggle UI (MCP > Settings) — collapsible accordion groups
-        │   ├── config-page.php      ← legacy MCP-Adapter config snippets (MCP > Config Files)
+        │   ├── settings-page.php    ← toggle UI (MCP > Settings) — accordion groups + legacy-page redirect
         │   └── connection-page.php  ← native endpoint + API key + per-client tabs (MCP > Connection)
-        └── abilities/           ← wsp_execute_* logic (reused by BOTH transports)
+        └── abilities/           ← wsp_execute_* logic (called by the native server)
             ├── posts.php  pages.php  taxonomy.php  comments.php  media.php
-            ├── users.php  search.php  site.php  yoast.php  elementor.php
+            ├── users.php  search.php  site.php  yoast.php  elementor.php  woocommerce.php
 ```
 
 **Rule:** The main file is a minimal loader (+ activation/migration glue) only. All feature logic lives in `includes/`. Never put feature code in `wsp-wordpress-mcp.php`.
@@ -136,7 +133,7 @@ wsp-wordpress-mcp/
 
 | Constant | Value |
 |---|---|
-| `WSP_MCP_VERSION` | `'2.0.0'` |
+| `WSP_MCP_VERSION` | `'2.2.0'` |
 | `WSP_MCP_OPTION` | `'wsp_mcp_abilities'` (per-ability on/off toggles) |
 | `WSP_MCP_DIR` | `plugin_dir_path(__FILE__)` |
 
@@ -154,8 +151,7 @@ wsp-wordpress-mcp/
 | `plugins_loaded` | `WSP_MCP_Server::init` | **v2.0** — builds tool registry + registers the native REST endpoint |
 | `plugins_loaded` | `wsp_mcp_maybe_upgrade_db` | **v2.0** — heals table on upgrade (db_version gate) |
 | `wsp_mcp_session_cleanup` | `WSP_MCP_Session_Store::cleanup_expired` | **v2.0** — daily expired-session purge |
-| `wp_abilities_api_categories_init` | `wsp_register_ability_category` | Dual-mode: registers `wsp` category (only fires if Abilities API present) |
-| `wp_abilities_api_init` | `wsp_mcp_register_all_abilities` | Dual-mode: guarded by `wsp_mcp_abilities_api_available()` before `wp_register_ability()` |
+| `admin_init` | `wsp_mcp_redirect_legacy_config_page` | **v2.2** — redirects the removed `page=wsp-mcp-config` URL to MCP > Connection |
 
 Activation (`wsp_mcp_activate`): create sessions table, ensure API key, schedule cron.
 Deactivation (`wsp_mcp_deactivate`): clear cron.
@@ -184,24 +180,19 @@ Elementor abilities are only appended if `\Elementor\Plugin` class exists.
 
 **`wsp_mcp_sanitize_settings($input)`** — sanitize callback for Settings API. Casts each known key to bool.
 
-**`wsp_register_ability_category()`** — registers the `wsp` MCP category.
-
 ---
 
 ## Ability modules
 
-Each file in `includes/abilities/` follows the same pattern:
-1. A `wsp_register_*_abilities()` function — checks `wsp_mcp_is_enabled()` per ability before calling `wp_register_ability()`.
-2. One `wsp_execute_*()` callback per ability — the actual logic.
+Each file in `includes/abilities/` contains one `wsp_execute_*()` callback per ability — the
+actual business logic, returning an array or `WP_Error`. These callbacks are wired to the native
+MCP server in `includes/tools/native-tools.php` (`WSP_MCP_Server::register_tool()`), and the
+admin toggle for each is driven by its entry in `wsp_mcp_ability_registry()` (`registry.php`).
 
-All abilities share this base config:
-```php
-$base = [
-    'category'      => 'wsp',
-    'output_schema' => ['type' => 'object'],
-    'meta'          => ['mcp' => ['public' => true]],
-];
-```
+> As of v2.2 there are **no** `wsp_register_*_abilities()` functions or `wp_register_ability()`
+> calls — the dual-mode Abilities-API path was removed. Files like `yoast.php`, `elementor.php`,
+> and `woocommerce.php` keep their plugin-specific helper functions (e.g. `wsp_yoast_is_active()`,
+> `wsp_woo_sideload_image_by_url()`) alongside the execute callbacks.
 
 ### Ability reference table
 
@@ -318,6 +309,32 @@ Only registered if `class_exists('\Elementor\Plugin')`. All abilities require `e
 - `wsp_elementor_generate_id()` — 8-char hex via `md5(uniqid(...))`.
 - Helper functions for tree traversal: `wsp_elementor_find_by_id`, `wsp_elementor_remove_by_id`, `wsp_elementor_update_by_id`, `wsp_elementor_insert_into`, `wsp_elementor_first_insertable`, `wsp_elementor_simplify_tree`, `wsp_elementor_search_tree`.
 
+#### WooCommerce (`woocommerce.php`)
+
+Only registered if `class_exists('WooCommerce')`. All 15 tools are OFF by default (added in v2.1.0). MCP tool names use the `wsp_woo_*` form; enable keys use `wsp/woo-*`.
+
+| Ability key | Label | Access | Default | Capability | Inputs |
+|---|---|---|---|---|---|
+| `wsp/woo-get-products` | List Products | read | OFF | `edit_posts` | `limit`, `status` |
+| `wsp/woo-get-product` | Get Single Product | read | OFF | `edit_posts` | `id`* |
+| `wsp/woo-create-product` | Create Product | write | OFF | `publish_posts` | `name`*, `regular_price`*, `sale_price`, `description`, `sku`, `status`, `type`, `image_url`, `attributes[]`, `stock_qty` |
+| `wsp/woo-create-variation` | Create Variation | write | OFF | `publish_posts` | `parent_id`*, `regular_price`*, `attributes`*, `sale_price`, `sku`, `image_url` |
+| `wsp/woo-update-product` | Update Product | write | OFF | `edit_posts` | `id`*, `name`, `regular_price`, `sale_price`, `description`, `sku`, `stock_qty`, `stock_status`, `image_url` |
+| `wsp/woo-list-orders` | List Orders | read | OFF | `edit_posts` | `limit`, `status` |
+| `wsp/woo-update-order-status` | Update Order Status | write | OFF | `edit_posts` | `id`*, `status`* (validated) |
+| `wsp/woo-refund-order` | Refund Order | write | OFF | `manage_woocommerce` | `order_id`*, `amount`*, `reason` |
+| `wsp/woo-create-coupon` | Create Coupon | write | OFF | `manage_woocommerce` | `code`*, `amount`*, `discount_type` (validated), `expiry_date` |
+| `wsp/woo-list-coupons` | List Coupons | read | OFF | `manage_woocommerce` | `limit` |
+| `wsp/woo-create-order-note` | Create Order Note | write | OFF | `edit_posts` | `id`*, `note`*, `is_public` |
+| `wsp/woo-list-customers` | List Customers | read | OFF | `manage_woocommerce` | `limit` |
+| `wsp/woo-report-sales` | Sales Report | read | OFF | `manage_woocommerce` | `days` |
+| `wsp/woo-get-low-stock` | Low Stock Alerts | read | OFF | `edit_posts` | `threshold` |
+| `wsp/woo-moderate-review` | Moderate Reviews | write | OFF | `edit_posts` | `id`*, `action`* (validated), `reply_text` |
+
+- Financial/PII tools (`refund-order`, `create-coupon`, `list-coupons`, `list-customers`) require `manage_woocommerce`.
+- Enum inputs (`status`, `discount_type`, `action`) are validated with `in_array(..., true)` in the execute callbacks.
+- `wsp_woo_sideload_image_by_url()` downloads/attaches product images; SSL verification is bypassed only for the single download request and only on `local`/`development` environments.
+
 ---
 
 ## Admin UI
@@ -349,16 +366,11 @@ Only registered if `class_exists('\Elementor\Plugin')`. All abilities require `e
   - **Codex** — native streamable HTTP TOML: `[mcp_servers.<name>]` `url` + `http_headers = { "Authorization" = "Bearer <key>" }` (`~/.codex/config.toml`).
   - **Antigravity** — native remote HTTP, but the URL key is **`serverUrl`** (not `url`): `mcpServers.<name>.{ serverUrl, headers }` (`~/.gemini/config/mcp_config.json`).
   - **OpenClaw** — nested **`mcp.servers`** schema (not top-level `mcpServers`) + `mcp-remote` bridge, key inlined in the header (`~/.openclaw/openclaw.json`).
-- Tab/copy UI markup + JS mirror the Config Files page.
+- Self-contained tab/copy UI markup + JS.
 
-### Config page (`MCP > Config Files`) — `config-page.php`
-
-- **Legacy / dual-mode page** (shows an inline warning notice linking to MCP > Connection as the
-  recommended native path).
-- Generates ready-to-paste MCP config snippets for Claude Desktop, Cursor, Codex (TOML), and Antigravity.
-- Auto-fills `WP_API_URL` from `rest_url('mcp/mcp-adapter-default-server')` and `WP_API_USERNAME` from current logged-in user.
-- User replaces `replace-with-your-application-password` with a WP Application Password.
-- Uses `@automattic/mcp-wordpress-remote@latest` npm package as the MCP transport (the MCP-Adapter route).
+> **Removed in v2.2:** the old **MCP > Config Files** page (`config-page.php`) that generated
+> mcp-adapter / `@automattic/mcp-wordpress-remote` snippets is gone. `wsp_mcp_redirect_legacy_config_page()`
+> (on `admin_init`, in `settings-page.php`) redirects the dead `page=wsp-mcp-config` URL to MCP > Connection.
 
 ---
 
@@ -402,7 +414,7 @@ This file (`AGENTS.md`) is the shared contract — **update it in the same PR wh
 architecture, hooks, tools, constants, or admin UX.**
 
 **Adding a feature / tool:** follow **"### How to add a NEW MCP tool (v2.0)"** above (logic →
-`native-tools.php` registration → `registry.php` metadata → optional dual-mode `wp_register_ability()`).
+`native-tools.php` registration → `registry.php` metadata).
 Keep business logic in `includes/abilities/*.php`; keep transport wiring in `includes/server/` and
 `includes/tools/`. **Never** put feature code in `wsp-wordpress-mcp.php` (loader + activation glue only).
 
@@ -424,24 +436,10 @@ Keep business logic in `includes/abilities/*.php`; keep transport wiring in `inc
 run locally. Validate changes by installing the plugin in a real WordPress site and exercising the
 endpoint with MCP Inspector / a connected client. Before release, run **Plugin Check** in WP admin.
 
-**Dual-mode guarantee:** the Abilities-API path stays behind a `function_exists('wp_register_ability')`
-guard so the plugin never fatals standalone and pre-2.0 MCP-Adapter connections keep working. Don't
-remove that guard without a deliberate deprecation.
-
----
-
-## Adding a new ability — LEGACY Abilities-API path (dual-mode only)
-
-> ⚠️ For v2.0, the primary way to add a tool is **"How to add a NEW MCP tool (v2.0)"** in the
-> "v2.0 Architecture" section near the top. The steps below only register a tool on the *Abilities
-> API* transport (for pre-2.0 MCP-Adapter users). To expose a tool on the native server you MUST
-> also register it in `includes/tools/native-tools.php`. Do both for full coverage.
-
-1. Add the ability's metadata to `wsp_mcp_ability_registry()` in `registry.php`.
-2. Create or add to an appropriate file in `includes/abilities/`.
-3. Inside `wsp_register_*_abilities()`, add an `if (wsp_mcp_is_enabled('wsp/new-key'))` block calling `wp_register_ability()`.
-4. Add a `wsp_execute_new_key($input)` function.
-5. Call `wsp_register_*_abilities()` from `wsp_mcp_register_all_abilities()` in the main file if it's a new file.
+**Native-only (since v2.2):** the dual-mode Abilities-API path was removed. The plugin no longer
+calls `wp_register_ability()` and does not reference `mcp-adapter` / `abilities-api` /
+`@automattic/mcp-wordpress-remote`. The native server is the sole transport. Don't reintroduce a
+hard dependency on off-directory packages — it blocks WordPress.org approval (see HISTORY.md).
 
 ---
 

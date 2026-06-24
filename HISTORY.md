@@ -150,12 +150,20 @@ M0 ─► M1 ─┬─► M2 ──────────┐
 - **MVP (no OAuth) shipped as v2.0** — M0–M4 + M6 + M7. Connects via Claude Desktop config + API key / App Password.
 - **Full (URL-paste UX) as v2.1** — adds M5 (OAuth is the biggest/riskiest chunk and not required for a working release).
 
-### No-breakage guarantee (dual-mode)
+### No-breakage guarantee (dual-mode) — superseded in v2.2
 
-v2.0 keeps `registry.php`'s `wp_register_ability()` calls **behind a `function_exists` guard** AND
-registers the native endpoint. Existing mcp-adapter users keep their current connection untouched;
-new users get the native one-plugin path. No bundled adapter → no class collision → no fatal.
-Deprecate the Abilities path in a later version.
+v2.0 kept `registry.php`'s `wp_register_ability()` calls **behind a `function_exists` guard** AND
+registered the native endpoint, so existing mcp-adapter users kept their connection while new users
+got the native one-plugin path. No bundled adapter → no class collision → no fatal.
+
+**v2.2.0 removed the dual-mode path entirely.** Ahead of WordPress.org submission, all
+`wp_register_ability()` registrations, the `wp_abilities_api_*` hooks, `wsp_register_ability_category()`,
+and the MCP > Config Files page (mcp-adapter / `@automattic/mcp-wordpress-remote` snippets) were
+deleted. Rationale: WP.org review disfavours references to off-directory packages, the native server
+had been the only recommended transport since v2.0, and carrying a second dead code path raised the
+review surface for no user benefit. Cost: connections made before v2.0 through the MCP Adapter must
+be re-created against the native endpoint (one-time, documented in the v2.2.0 changelog). The
+`wsp_execute_*()` business logic was untouched — only the registration layer was removed.
 
 ### MCP spec version note
 

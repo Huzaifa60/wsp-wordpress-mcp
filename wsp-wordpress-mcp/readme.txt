@@ -1,10 +1,10 @@
 === WebSensePro MCP Abilities ===
 Contributors: websensepro
-Tags: mcp, ai, claude, model context protocol, elementor
+Tags: mcp, ai, claude, model context protocol, woocommerce
 Requires at least: 6.2
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.0.0
+Stable tag: 2.2.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Expose your WordPress site to AI agents (Claude, Cursor, and other MCP clients) 
 
 WebSensePro MCP Abilities turns your WordPress site into a Model Context Protocol (MCP) server. AI clients can read and edit posts, pages, categories, tags, media, comments, users, and (when installed) Yoast SEO meta and Elementor page content — all under granular, per-ability admin control.
 
-As of v2.0 the plugin ships its **own native MCP server**. You no longer need the WordPress MCP Adapter or any companion plugin: activate, copy your connection details from **MCP > Connection**, and connect.
+The plugin ships its **own native MCP server**. You do not need the WordPress MCP Adapter or any companion plugin: activate, copy your connection details from **MCP > Connection**, and connect. WooCommerce tools (products, orders, refunds, coupons, customers, reports) are available when WooCommerce is active.
 
 = Key features =
 
@@ -45,7 +45,7 @@ As of v2.0 the plugin ships its **own native MCP server**. You no longer need th
 
 = Do I need the WordPress MCP Adapter plugin? =
 
-No. As of v2.0 this plugin includes its own MCP server. If the Abilities API / MCP Adapter happens to be present, existing connections through it continue to work, but it is not required.
+No. This plugin includes its own MCP server and connects directly. As of v2.2 the older MCP Adapter / Abilities-API compatibility path has been removed; connect using the native endpoint shown on **MCP > Connection**.
 
 = How does authentication work? =
 
@@ -56,6 +56,17 @@ Use a WordPress Application Password (sent via HTTP Basic auth) or the plugin-ge
 Any client that supports the Streamable HTTP MCP transport — Claude Desktop, MCP Inspector, IDEs, and scripts.
 
 == Changelog ==
+
+= 2.2.0 =
+* Removed: the **MCP > Config Files** page and the legacy dual-mode Abilities-API / mcp-adapter registration path. The plugin is now native-only.
+* Changed: bookmarks to the old Config Files page now redirect to **MCP > Connection**.
+* Breaking: connections made before v2.0 through the WordPress MCP Adapter must be re-created using the native endpoint on **MCP > Connection**.
+
+= 2.1.0 =
+* New: 15 WooCommerce tools — products (list, get, create, create variation, update), orders (list, update status, refund), coupons (create, list), order notes, customers, sales report, low-stock alerts, and review moderation.
+* All WooCommerce tools are off by default and only registered when WooCommerce is active.
+* Financial and PII tools (refund, customers, coupons) require the `manage_woocommerce` capability.
+* Product/variation image URLs are sideloaded safely; SSL bypass is scoped to the single request and environment-gated.
 
 = 2.0.0 =
 * New: built-in native MCP server — no companion plugin or WordPress MCP Adapter required.

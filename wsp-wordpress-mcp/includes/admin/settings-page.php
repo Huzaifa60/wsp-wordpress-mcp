@@ -19,16 +19,20 @@ function wsp_mcp_add_menu() {
         'manage_options',
         'wsp-mcp-abilities'
     );
-
-    add_submenu_page(
-        'wsp-mcp-abilities',
-        'Config Files',
-        'Config Files',
-        'manage_options',
-        'wsp-mcp-config',
-        'wsp_mcp_config_page'
-    );
 }
+
+/**
+ * Redirect the removed legacy "Config Files" page (page=wsp-mcp-config) to the
+ * native Connection page so old bookmarks don't hit a "permission denied" wall.
+ * The Config Files page and its mcp-adapter snippets were removed in v2.2.0.
+ */
+function wsp_mcp_redirect_legacy_config_page() {
+    if ( isset( $_GET['page'] ) && 'wsp-mcp-config' === $_GET['page'] && current_user_can( 'manage_options' ) ) {
+        wp_safe_redirect( admin_url( 'admin.php?page=wsp-mcp-connection' ) );
+        exit;
+    }
+}
+add_action( 'admin_init', 'wsp_mcp_redirect_legacy_config_page' );
 
 function wsp_mcp_settings_page() {
     if ( ! current_user_can( 'manage_options' ) ) return;

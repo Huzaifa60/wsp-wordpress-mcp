@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WebSensePro MCP Abilities
  * Description: Exposes WordPress content to Claude AI via a built-in MCP server (no companion plugin required). Manage all abilities from Settings > MCP.
- * Version: 2.0.0
+ * Version: 2.2.0
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Author: WebSensePro
@@ -13,14 +13,13 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'WSP_MCP_VERSION', '2.0.0' );
+define( 'WSP_MCP_VERSION', '2.2.0' );
 define( 'WSP_MCP_OPTION', 'wsp_mcp_abilities' );
 define( 'WSP_MCP_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once WSP_MCP_DIR . 'includes/dependency.php';
 require_once WSP_MCP_DIR . 'includes/registry.php';
 require_once WSP_MCP_DIR . 'includes/admin/settings-page.php';
-require_once WSP_MCP_DIR . 'includes/admin/config-page.php';
 require_once WSP_MCP_DIR . 'includes/admin/connection-page.php';
 // Native MCP server (v2.0).
 require_once WSP_MCP_DIR . 'includes/server/class-session-store.php';
@@ -47,12 +46,6 @@ add_action( 'admin_init',                       'wsp_mcp_register_settings' );
 add_action( 'plugins_loaded', array( 'WSP_MCP_Server', 'init' ) );
 add_action( 'plugins_loaded', 'wsp_mcp_maybe_upgrade_db' );
 add_action( 'wsp_mcp_session_cleanup', array( 'WSP_MCP_Session_Store', 'cleanup_expired' ) );
-
-// Dual-mode: also register via the Abilities API IF a transport plugin provides
-// it, so existing mcp-adapter connections keep working unchanged. Native users
-// need neither hook. See CLAUDE.md "No-breakage guarantee".
-add_action( 'wp_abilities_api_categories_init', 'wsp_register_ability_category' );
-add_action( 'wp_abilities_api_init',            'wsp_mcp_register_all_abilities' );
 
 register_activation_hook( __FILE__, 'wsp_mcp_activate' );
 register_deactivation_hook( __FILE__, 'wsp_mcp_deactivate' );
@@ -85,26 +78,4 @@ function wsp_mcp_maybe_upgrade_db() {
         wp_schedule_event( time(), 'daily', 'wsp_mcp_session_cleanup' );
     }
     update_option( 'wsp_mcp_db_version', WSP_MCP_VERSION, false );
-}
-
-function wsp_mcp_register_all_abilities() {
-    // Defensive guard: only register via the Abilities API when it is actually
-    // present. The native server (above) handles MCP regardless; this path is
-    // purely for dual-mode back-compat with pre-2.0 mcp-adapter connections.
-    if ( ! wsp_mcp_abilities_api_available() ) {
-        return;
-    }
-    wsp_register_posts_abilities();
-    wsp_register_pages_abilities();
-    wsp_register_taxonomy_abilities();
-    wsp_register_comments_abilities();
-    wsp_register_media_abilities();
-    wsp_register_users_abilities();
-    wsp_register_search_abilities();
-    wsp_register_site_abilities();
-    wsp_register_yoast_abilities();
-    wsp_register_elementor_abilities();
-    if ( class_exists( 'WooCommerce' ) ) {
-        wsp_register_woocommerce_abilities();
-    }
 }

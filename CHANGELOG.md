@@ -8,6 +8,71 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.2.0] — 2026-06-24
+
+### Summary
+The plugin is now **native-only**. The legacy dual-mode path (registering abilities through the WordPress Abilities API / mcp-adapter when present) and the **MCP > Config Files** admin page have both been removed. This is the cleanup done ahead of WordPress.org submission — the plugin no longer references the off-directory `mcp-adapter`/`abilities-api` packages or the `@automattic/mcp-wordpress-remote` npm bridge anywhere.
+
+### Removed
+- **MCP > Config Files admin page** (`includes/admin/config-page.php`) — deleted. It generated mcp-adapter / `@automattic/mcp-wordpress-remote` config snippets, which are obsolete now that the native server is the only transport. **MCP > Connection** is the single source for connection details.
+- **Dual-mode Abilities-API registration:**
+  - `wsp_mcp_register_all_abilities()` and the `wp_abilities_api_init` / `wp_abilities_api_categories_init` hooks in the main file.
+  - `wsp_register_ability_category()` in `registry.php`.
+  - `wsp_register_*_abilities()` in every `includes/abilities/*.php` module (posts, pages, taxonomy, comments, media, users, search, site, yoast, elementor, woocommerce). The `wp_register_ability()` calls are gone; the `wsp_execute_*()` business logic is **unchanged** and still drives the native server.
+  - `wsp_mcp_abilities_api_available()` in `dependency.php`.
+
+### Changed
+- `dependency.php` reduced to a stub — only `wsp_mcp_transport_available()` (always `true`) remains, kept for back-compat/readability.
+- Old bookmarks to `admin.php?page=wsp-mcp-config` now **redirect** to MCP > Connection (`wsp_mcp_redirect_legacy_config_page()` on `admin_init`) instead of hitting a permission wall.
+- `WSP_MCP_VERSION` and the plugin header bumped to `2.2.0` (the constant had been left at `2.0.0`).
+
+### Breaking changes
+- **Pre-2.0 connections made through the WordPress MCP Adapter stop working.** Those users must reconnect using the native endpoint from **MCP > Connection** (Application Password or the plugin API key). New installs and any connection already using the native endpoint are unaffected.
+
+### Migration
+- If you connected before v2.0 via the MCP Adapter, open **MCP > Connection**, copy the endpoint URL + API key (or use an Application Password), and reconnect your client.
+- No data migration. Options, the sessions table, and per-ability toggles are untouched.
+
+### Files removed
+`includes/admin/config-page.php`
+
+---
+
+## [2.1.0] — 2026-06-23
+
+### Summary
+Adds a full WooCommerce integration suite — 15 tools covering products, orders, refunds, coupons, customers, stock, sales reports, and review moderation. All tools are off by default and only registered when WooCommerce is active. (This release shipped via PR #6; the changelog entry is recorded here retroactively.)
+
+### Added
+- **`wsp_woo_get_products`** — list products with limit and status filtering. Requires `edit_posts`.
+- **`wsp_woo_get_product`** — get full details of a single product by ID. Requires `edit_posts`.
+- **`wsp_woo_create_product`** — create a simple or variable product; supports attributes, SKU, stock quantity, and image-URL sideload. Requires `publish_posts`.
+- **`wsp_woo_create_variation`** — create a variation for an existing variable product with per-variation price, SKU, attributes, and image. Requires `publish_posts`.
+- **`wsp_woo_update_product`** — update name, price, sale price, description, SKU, stock, status, or featured image. Requires `edit_posts`.
+- **`wsp_woo_list_orders`** — list recent orders with optional status filter. Requires `edit_posts`.
+- **`wsp_woo_update_order_status`** — update an order's status; validated against the core WooCommerce statuses. Requires `edit_posts`.
+- **`wsp_woo_refund_order`** — create a full or partial refund (triggers gateway refund via `wc_create_refund`). Requires `manage_woocommerce`.
+- **`wsp_woo_create_coupon`** — create a percentage or fixed coupon with optional expiry; `discount_type` validated. Requires `manage_woocommerce`.
+- **`wsp_woo_list_coupons`** — list coupons with usage stats. Requires `manage_woocommerce`.
+- **`wsp_woo_create_order_note`** — add an internal or customer-facing note to an order. Requires `edit_posts`.
+- **`wsp_woo_list_customers`** — list registered customers with billing email and phone (PII). Requires `manage_woocommerce`.
+- **`wsp_woo_report_sales`** — gross/net revenue, tax, shipping, and average order value over N past days. Requires `manage_woocommerce`.
+- **`wsp_woo_get_low_stock`** — products below a stock threshold plus out-of-stock products. Requires `edit_posts`.
+- **`wsp_woo_moderate_review`** — approve, spam, trash, or reply to a product review; `action` validated. Requires `edit_posts`.
+- New module `includes/abilities/woocommerce.php`; image-sideload helper with SSL bypass scoped to the single download request and gated to `local`/`development` environments.
+
+### Changed
+- `registry.php` and `native-tools.php` — 15 new entries each, gated on `class_exists('WooCommerce')`.
+
+### Security
+- Financial / PII tools (`refund_order`, `list_customers`, `create_coupon`, `list_coupons`) require `manage_woocommerce`.
+- All enum inputs (`status`, `discount_type`, `action`) validated with `in_array(..., true)`.
+
+### Migration
+- No action required. All WooCommerce tools are off by default and invisible when WooCommerce is not active.
+
+---
+
 ## [2.0.0] — 2026-06-20
 
 ### Summary

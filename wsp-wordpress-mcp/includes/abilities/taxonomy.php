@@ -1,57 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-function wsp_register_taxonomy_abilities() {
-    $base = array( 'category' => 'wsp', 'output_schema' => array( 'type' => 'object' ), 'meta' => array( 'mcp' => array( 'public' => true ) ) );
-
-    if ( wsp_mcp_is_enabled( 'wsp/get-categories' ) ) {
-        wp_register_ability( 'wsp/get-categories', array_merge( $base, array(
-            'label'              => 'Get Categories',
-            'description'        => 'Returns all categories.',
-            'input_schema'       => array( 'type' => 'object', 'properties' => array() ),
-            'permission_callback' => '__return_true',
-            'execute_callback'   => 'wsp_execute_get_categories',
-        ) ) );
-    }
-
-    if ( wsp_mcp_is_enabled( 'wsp/create-category' ) ) {
-        wp_register_ability( 'wsp/create-category', array_merge( $base, array(
-            'label'              => 'Create Category',
-            'description'        => 'Creates a new category.',
-            'input_schema'       => array( 'type' => 'object', 'required' => array( 'name' ), 'properties' => array(
-                'name'        => array( 'type' => 'string',  'description' => 'Category name.' ),
-                'description' => array( 'type' => 'string',  'description' => 'Description.' ),
-                'parent'      => array( 'type' => 'integer', 'description' => 'Parent category ID.' ),
-            ) ),
-            'permission_callback' => function() { return current_user_can( 'manage_categories' ); },
-            'execute_callback'   => 'wsp_execute_create_category',
-        ) ) );
-    }
-
-    if ( wsp_mcp_is_enabled( 'wsp/get-tags' ) ) {
-        wp_register_ability( 'wsp/get-tags', array_merge( $base, array(
-            'label'              => 'Get Tags',
-            'description'        => 'Returns all tags.',
-            'input_schema'       => array( 'type' => 'object', 'properties' => array() ),
-            'permission_callback' => '__return_true',
-            'execute_callback'   => 'wsp_execute_get_tags',
-        ) ) );
-    }
-
-    if ( wsp_mcp_is_enabled( 'wsp/create-tag' ) ) {
-        wp_register_ability( 'wsp/create-tag', array_merge( $base, array(
-            'label'              => 'Create Tag',
-            'description'        => 'Creates a new tag.',
-            'input_schema'       => array( 'type' => 'object', 'required' => array( 'name' ), 'properties' => array(
-                'name'        => array( 'type' => 'string', 'description' => 'Tag name.' ),
-                'description' => array( 'type' => 'string', 'description' => 'Description.' ),
-            ) ),
-            'permission_callback' => function() { return current_user_can( 'manage_categories' ); },
-            'execute_callback'   => 'wsp_execute_create_tag',
-        ) ) );
-    }
-}
-
 function wsp_execute_get_categories( $input ) {
     $cats   = get_categories( array( 'hide_empty' => false ) );
     $result = array();

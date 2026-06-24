@@ -109,7 +109,3 @@ function wsp_mcp_sanitize_settings( $input ) {
 function wsp_mcp_register_settings() {
     register_setting( 'wsp_mcp_settings_group', WSP_MCP_OPTION, array( 'sanitize_callback' => 'wsp_mcp_sanitize_settings' ) );
 }
-
-function wsp_register_ability_category() {
-    wp_register_ability_category( 'wsp', array( 'label' => 'WebSensePro', 'description' => 'WebSensePro MCP abilities.' ) );
-}
