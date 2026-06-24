@@ -104,8 +104,8 @@ must **reconnect** (fully restart Claude Desktop, not just open a new chat) befo
 
 ```
 wsp-wordpress-mcp/
-└── wsp-wordpress-mcp/          ← plugin root (the installable folder)
-    ├── wsp-wordpress-mcp.php   ← main file: constants, requires, hooks, activation/migration
+└── websensepro-mcp-abilities/          ← plugin root (the installable folder)
+    ├── websensepro-mcp-abilities.php   ← main file: constants, requires, hooks, activation/migration
     ├── readme.txt              ← WP.org readme (v2.0)
     ├── uninstall.php           ← deletes wsp_mcp_* options + drops sessions table
     └── includes/
@@ -125,7 +125,7 @@ wsp-wordpress-mcp/
             ├── users.php  search.php  site.php  yoast.php  elementor.php  woocommerce.php
 ```
 
-**Rule:** The main file is a minimal loader (+ activation/migration glue) only. All feature logic lives in `includes/`. Never put feature code in `wsp-wordpress-mcp.php`.
+**Rule:** The main file is a minimal loader (+ activation/migration glue) only. All feature logic lives in `includes/`. Never put feature code in `websensepro-mcp-abilities.php`.
 
 ---
 
@@ -416,7 +416,7 @@ architecture, hooks, tools, constants, or admin UX.**
 **Adding a feature / tool:** follow **"### How to add a NEW MCP tool (v2.0)"** above (logic →
 `native-tools.php` registration → `registry.php` metadata).
 Keep business logic in `includes/abilities/*.php`; keep transport wiring in `includes/server/` and
-`includes/tools/`. **Never** put feature code in `wsp-wordpress-mcp.php` (loader + activation glue only).
+`includes/tools/`. **Never** put feature code in `websensepro-mcp-abilities.php` (loader + activation glue only).
 
 **Conventions:**
 - Match the existing procedural style and `wsp_`/`wsp/`/`wsp_…` naming above.
