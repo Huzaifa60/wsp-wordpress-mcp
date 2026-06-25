@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: WebSensePro MCP Abilities
- * Description: Exposes WordPress content to Claude AI via a built-in MCP server (no companion plugin required). Manage all abilities from Settings > MCP.
+ * Plugin Name: Easy AI Agents Connector
+ * Description: Exposes WordPress content to Claude AI and other AI Agents via a built-in MCP server (no companion plugin required). Manage all abilities from Settings > MCP.
  * Version: 2.2.0
  * Requires at least: 6.2
  * Requires PHP: 7.4
