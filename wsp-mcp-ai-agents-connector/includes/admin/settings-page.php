@@ -2,6 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 function wsp_mcp_add_menu() {
+    // Menu position set to 110 to comply with core WP menu guidelines
     add_menu_page(
         'WSP MCP Abilities',
         'MCP',
@@ -9,7 +10,7 @@ function wsp_mcp_add_menu() {
         'wsp-mcp-abilities',
         'wsp_mcp_settings_page',
         'dashicons-admin-generic',
-        3
+        110
     );
 
     add_submenu_page(
@@ -24,7 +25,6 @@ function wsp_mcp_add_menu() {
 /**
  * Redirect the removed legacy "Config Files" page (page=wsp-mcp-config) to the
  * native Connection page so old bookmarks don't hit a "permission denied" wall.
- * The Config Files page and its mcp-adapter snippets were removed in v2.2.0.
  */
 function wsp_mcp_redirect_legacy_config_page() {
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -35,40 +35,15 @@ function wsp_mcp_redirect_legacy_config_page() {
 }
 add_action( 'admin_init', 'wsp_mcp_redirect_legacy_config_page' );
 
-function wsp_mcp_settings_page() {
-    if ( ! current_user_can( 'manage_options' ) ) return;
-
-    $registry = wsp_mcp_ability_registry();
-    $settings = wsp_mcp_get_settings();
-    $groups   = array();
-    foreach ( $registry as $key => $cfg ) {
-        $groups[ $cfg['group'] ][ $key ] = $cfg;
+/**
+ * Enqueue settings page CSS and JS safely using WP structures.
+ */
+function wsp_mcp_enqueue_settings_assets( $hook ) {
+    if ( 'toplevel_page_wsp-mcp-abilities' !== $hook ) {
+        return;
     }
 
-    $icons   = array(
-        'Posts'                  => '📝',
-        'Pages'                  => '📄',
-        'Taxonomy'               => '🏷️',
-        'Comments'               => '💬',
-        'Media'                  => '🖼️',
-        'Users'                  => '👥',
-        'Search'                 => '🔍',
-        'Site'                   => '🌐',
-        'Elementor'              => '⚡',
-        'Yoast SEO'              => '🔎',
-        'WooCommerce'            => '🛍️',
-        'Advanced Custom Fields' => '🧩',
-    );
-    $total   = count( $settings );
-    $enabled = count( array_filter( $settings ) );
-    $writes  = 0;
-    foreach ( $settings as $key => $on ) {
-        if ( $on && isset( $registry[ $key ] ) && 'write' === $registry[ $key ]['access'] ) {
-            $writes++;
-        }
-    }
-    ?>
-    <style>
+    $custom_css = '
         .wsp-wrap{max-width:860px;margin:30px 20px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
         .wsp-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
         .wsp-header h1{margin:0;font-size:22px;font-weight:700;color:#1d2327}
@@ -110,8 +85,116 @@ function wsp_mcp_settings_page() {
         .wsp-savebar{display:flex;align-items:center;gap:16px;margin-top:24px;padding:18px 20px;background:#fff;border:1px solid #dcdcde;border-radius:8px}
         .wsp-savebar .button-primary{font-size:14px;padding:7px 20px;height:auto}
         .wsp-savenote{font-size:12px;color:#787c82}
-    </style>
+    ';
+    wp_add_inline_style( 'common', $custom_css );
 
+    $custom_js = '
+        document.addEventListener("DOMContentLoaded", function(){
+            var STORE = "wsp_acc_open";
+
+            function readOpen(){
+                try { return JSON.parse(localStorage.getItem(STORE)) || []; }
+                catch(e){ return []; }
+            }
+            function writeOpen(list){
+                try { localStorage.setItem(STORE, JSON.stringify(list)); } catch(e){}
+            }
+
+            // Restore open/closed state
+            var open = readOpen();
+            document.querySelectorAll(".wsp-group").forEach(function(grp){
+                if (open.indexOf(grp.dataset.group) !== -1) {
+                    grp.classList.add("wsp-open");
+                }
+            });
+
+            // Accordion toggle on header click
+            document.querySelectorAll(".wsp-gh").forEach(function(head){
+                head.addEventListener("click", function(e){
+                    if (e.target.closest(".wsp-toggle-all")) return;
+                    var grp = head.closest(".wsp-group");
+                    grp.classList.toggle("wsp-open");
+                    var list = readOpen();
+                    var name = grp.dataset.group;
+                    var i = list.indexOf(name);
+                    if (grp.classList.contains("wsp-open")) {
+                        if (i === -1) list.push(name);
+                    } else if (i !== -1) {
+                        list.splice(i, 1);
+                    }
+                    writeOpen(list);
+                });
+            });
+
+            // Keep count badge in sync
+            function refreshCount(g){
+                var badge = document.querySelector(\'.wsp-gcount[data-group="\' + g + \'"]\');
+                if (!badge) return;
+                var boxes = document.querySelectorAll(\'input[data-group="\' + g + \'"]\');
+                var on = Array.from(boxes).filter(function(b){ return b.checked; }).length;
+                badge.textContent = on + " / " + badge.dataset.total;
+                badge.classList.toggle("wsp-gcount--on", on > 0);
+            }
+
+            // Write confirmation
+            document.querySelectorAll("input[type=\'checkbox\'][data-group]").forEach(function(cb){
+                cb.addEventListener("change", function(){
+                    if (this.dataset.access === "write" && this.checked &&
+                        !confirm("⚠️ This ability can MODIFY live site content.\n\nAre you sure you want to enable it?")) {
+                        this.checked = false;
+                    }
+                    refreshCount(this.dataset.group);
+                });
+            });
+
+            document.querySelectorAll(".wsp-toggle-all").forEach(function(btn){
+                btn.addEventListener("click", function(){
+                    var g = this.dataset.group;
+                    var boxes = document.querySelectorAll(\'input[data-group="\' + g + \'"]\');
+                    var allOn = Array.from(boxes).every(function(b){ return b.checked; });
+                    boxes.forEach(function(b){ b.checked = !allOn; });
+                    refreshCount(g);
+                });
+            });
+        });
+    ';
+    wp_add_inline_script( 'common', $custom_js );
+}
+add_action( 'admin_enqueue_scripts', 'wsp_mcp_enqueue_settings_assets' );
+
+function wsp_mcp_settings_page() {
+    if ( ! current_user_can( 'manage_options' ) ) return;
+
+    $registry = wsp_mcp_ability_registry();
+    $settings = wsp_mcp_get_settings();
+    $groups   = array();
+    foreach ( $registry as $key => $cfg ) {
+        $groups[ $cfg['group'] ][ $key ] = $cfg;
+    }
+
+    $icons   = array(
+        'Posts'                  => '📝',
+        'Pages'                  => '📄',
+        'Taxonomy'               => '🏷️',
+        'Comments'               => '💬',
+        'Media'                  => '🖼️',
+        'Users'                  => '👥',
+        'Search'                 => '🔍',
+        'Site'                   => '🌐',
+        'Elementor'              => '⚡',
+        'Yoast SEO'              => '🔎',
+        'WooCommerce'            => '🛍️',
+        'Advanced Custom Fields' => '🧩',
+    );
+    $total   = count( $settings );
+    $enabled = count( array_filter( $settings ) );
+    $writes  = 0;
+    foreach ( $settings as $key => $on ) {
+        if ( $on && isset( $registry[ $key ] ) && 'write' === $registry[ $key ]['access'] ) {
+            $writes++;
+        }
+    }
+    ?>
     <div class="wsp-wrap">
         <div class="wsp-header">
             <h1>⚙️ WSP MCP Abilities</h1>
@@ -123,11 +206,9 @@ function wsp_mcp_settings_page() {
         </p>
 
         <div class="wsp-stats">
-            <div class="wsp-stats">
-                <div class="wsp-stat"><div class="wsp-stat-n"><?php echo esc_html( $total ); ?></div><div class="wsp-stat-l">Total Abilities</div></div>
-                <div class="wsp-stat wsp-stat--on"><div class="wsp-stat-n"><?php echo esc_html( $enabled ); ?></div><div class="wsp-stat-l">Enabled</div></div>
-                <div class="wsp-stat wsp-stat--wr"><div class="wsp-stat-n"><?php echo esc_html( $writes ); ?></div><div class="wsp-stat-l">Write Access Active</div></div>
-            </div>
+            <div class="wsp-stat"><div class="wsp-stat-n"><?php echo esc_html( $total ); ?></div><div class="wsp-stat-l">Total Abilities</div></div>
+            <div class="wsp-stat wsp-stat--on"><div class="wsp-stat-n"><?php echo esc_html( $enabled ); ?></div><div class="wsp-stat-l">Enabled</div></div>
+            <div class="wsp-stat wsp-stat--wr"><div class="wsp-stat-n"><?php echo esc_html( $writes ); ?></div><div class="wsp-stat-l">Write Access Active</div></div>
         </div>
 
         <form method="post" action="options.php">
@@ -181,76 +262,5 @@ function wsp_mcp_settings_page() {
             </div>
         </form>
     </div>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function(){
-        var STORE = 'wsp_acc_open';
-
-        function readOpen(){
-            try { return JSON.parse(localStorage.getItem(STORE)) || []; }
-            catch(e){ return []; }
-        }
-        function writeOpen(list){
-            try { localStorage.setItem(STORE, JSON.stringify(list)); } catch(e){}
-        }
-
-        // Restore open/closed state (default: all collapsed).
-        var open = readOpen();
-        document.querySelectorAll('.wsp-group').forEach(function(grp){
-            if (open.indexOf(grp.dataset.group) !== -1) {
-                grp.classList.add('wsp-open');
-            }
-        });
-
-        // Accordion toggle on header click (ignore clicks on the Toggle All button).
-        document.querySelectorAll('.wsp-gh').forEach(function(head){
-            head.addEventListener('click', function(e){
-                if (e.target.closest('.wsp-toggle-all')) return;
-                var grp = head.closest('.wsp-group');
-                grp.classList.toggle('wsp-open');
-                var list = readOpen();
-                var name = grp.dataset.group;
-                var i = list.indexOf(name);
-                if (grp.classList.contains('wsp-open')) {
-                    if (i === -1) list.push(name);
-                } else if (i !== -1) {
-                    list.splice(i, 1);
-                }
-                writeOpen(list);
-            });
-        });
-
-        // Keep a group's header count badge in sync with its toggles.
-        function refreshCount(g){
-            var badge = document.querySelector('.wsp-gcount[data-group="'+g+'"]');
-            if (!badge) return;
-            var boxes = document.querySelectorAll('input[data-group="'+g+'"]');
-            var on = Array.from(boxes).filter(function(b){ return b.checked; }).length;
-            badge.textContent = on + ' / ' + badge.dataset.total;
-            badge.classList.toggle('wsp-gcount--on', on > 0);
-        }
-
-        // Write-ability confirmation + count refresh.
-        document.querySelectorAll('input[type="checkbox"][data-group]').forEach(function(cb){
-            cb.addEventListener('change', function(){
-                if (this.dataset.access === 'write' && this.checked &&
-                    !confirm('⚠️ This ability can MODIFY live site content.\n\nAre you sure you want to enable it?')) {
-                    this.checked = false;
-                }
-                refreshCount(this.dataset.group);
-            });
-        });
-
-        document.querySelectorAll('.wsp-toggle-all').forEach(function(btn){
-            btn.addEventListener('click', function(){
-                var g = this.dataset.group;
-                var boxes = document.querySelectorAll('input[data-group="'+g+'"]');
-                var allOn = Array.from(boxes).every(function(b){ return b.checked; });
-                boxes.forEach(function(b){ b.checked = !allOn; });
-                refreshCount(g);
-            });
-        });
-    });
-    </script>
     <?php
 }
