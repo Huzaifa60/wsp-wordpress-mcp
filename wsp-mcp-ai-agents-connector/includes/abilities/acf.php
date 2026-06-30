@@ -21,19 +21,15 @@ function wsp_acf_check_cap( $cap = 'edit_posts' ) {
 }
 
 /**
- * Validate and resolve ACF target selectors.
+ * Validate and resolve ACF target selectors contextually (Issues 3 & 4 Resolved).
  */
-function wsp_acf_validate_target( $target_id, $target_type = 'post', $cap = 'edit_posts' ) {
-    $cap_check = wsp_acf_check_cap( $cap );
-    if ( is_wp_error( $cap_check ) ) {
-        return $cap_check;
-    }
-
+function wsp_acf_validate_target( $target_id, $target_type = 'post', $is_write = false ) {
     if ( ! wsp_acf_is_active() ) {
         return new WP_Error( 'acf_inactive', 'ACF is not active.' );
     }
 
-    if ( $target_id === 'option' || $target_id === 'options' ) {
+    // Standardize options page target (Require manage_options for any read/write on Options)
+    if ( $target_id === 'option' || $target_id === 'options' || $target_type === 'option' ) {
         $opt_cap_check = wsp_acf_check_cap( 'manage_options' );
         if ( is_wp_error( $opt_cap_check ) ) {
             return $opt_cap_check;
@@ -41,12 +37,29 @@ function wsp_acf_validate_target( $target_id, $target_type = 'post', $cap = 'edi
         return 'options';
     }
 
-    if ( is_numeric( $target_id ) ) {
-        $id = intval( $target_id );
+    // Normalize string identifiers (e.g., 'user_5' -> ID: 5, Type: user)
+    $clean_id = $target_id;
+    if ( is_string( $target_id ) ) {
+        if ( strpos( $target_id, 'user_' ) === 0 ) {
+            $clean_id = intval( str_replace( 'user_', '', $target_id ) );
+            $target_type = 'user';
+        } elseif ( strpos( $target_id, 'term_' ) === 0 || strpos( $target_id, 'category_' ) === 0 ) {
+            $clean_id = intval( str_replace( array( 'term_', 'category_' ), '', $target_id ) );
+            $target_type = 'term';
+        }
+    }
+
+    if ( is_numeric( $clean_id ) ) {
+        $id = intval( $clean_id );
         if ( $target_type === 'post' || $target_type === 'page' ) {
             $post = get_post( $id );
             if ( ! $post ) {
                 return new WP_Error( 'post_not_found', 'Target post/page not found.' );
+            }
+            
+            // Check specific edit_post permission for the target post (Issue 4)
+            if ( ! current_user_can( 'edit_post', $id ) ) {
+                return new WP_Error( 'forbidden', 'You do not have permission to view or edit this content.' );
             }
             return $id;
         } elseif ( $target_type === 'user' ) {
@@ -54,23 +67,30 @@ function wsp_acf_validate_target( $target_id, $target_type = 'post', $cap = 'edi
             if ( ! $user ) {
                 return new WP_Error( 'user_not_found', 'Target user not found.' );
             }
+            
+            if ( $is_write ) {
+                // Editing user meta requires edit_user capability for that specific user ID (Issue 4)
+                if ( ! current_user_can( 'edit_user', $id ) ) {
+                    return new WP_Error( 'forbidden', 'You do not have permission to edit this user metadata.' );
+                }
+            } else {
+                // Reading user meta requires list_users capability (or if reading self) (Issue 3)
+                if ( ! current_user_can( 'list_users' ) && get_current_user_id() !== $id ) {
+                    return new WP_Error( 'forbidden', 'You do not have permission to view this user metadata.' );
+                }
+            }
             return 'user_' . $id;
         } elseif ( $target_type === 'term' ) {
             $term = get_term( $id );
             if ( is_wp_error( $term ) || ! $term ) {
                 return new WP_Error( 'term_not_found', 'Target term not found.' );
             }
+            
+            // Editing or reading custom taxonomy term meta is restricted to users who manage taxonomies (Issue 3 & 4)
+            if ( ! current_user_can( 'manage_categories' ) ) {
+                return new WP_Error( 'forbidden', 'You do not have permission to manage terms.' );
+            }
             return 'term_' . $id;
-        }
-    }
-
-    if ( is_string( $target_id ) ) {
-        if ( strpos( $target_id, 'user_' ) === 0 ) {
-            return $target_id;
-        } elseif ( strpos( $target_id, 'term_' ) === 0 || strpos( $target_id, 'category_' ) === 0 ) {
-            return $target_id;
-        } elseif ( $target_id === 'options' ) {
-            return 'options';
         }
     }
 
@@ -241,6 +261,9 @@ function wsp_execute_acf_create_field( $input ) {
     return array( 'success' => true, 'field' => $saved );
 }
 
+/**
+ * Update configuration for a single field.
+ */
 function wsp_execute_acf_update_field_config( $input ) {
     $cap_check = wsp_acf_check_cap( 'manage_options' );
     if ( is_wp_error( $cap_check ) ) return $cap_check;
@@ -298,12 +321,12 @@ function wsp_execute_acf_sync_fields( $input ) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. VALUES & METADATA (WITH DOT-NOTATION)
+// 3. VALUES & METADATA (WITH CONTEXTUAL CAPABILITY CHECKS)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function wsp_execute_acf_get_value_deep( $input ) {
     $target_type = isset( $input['target_type'] ) ? sanitize_text_field( $input['target_type'] ) : 'post';
-    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, 'edit_posts' );
+    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, false ); // Contextual Read Check
     if ( is_wp_error( $selector ) ) return $selector;
 
     $field_name = sanitize_text_field( $input['field_name'] );
@@ -320,7 +343,7 @@ function wsp_execute_acf_get_value_deep( $input ) {
 
 function wsp_execute_acf_update_value_deep( $input ) {
     $target_type = isset( $input['target_type'] ) ? sanitize_text_field( $input['target_type'] ) : 'post';
-    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, 'edit_posts' );
+    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, true ); // Contextual Write Check
     if ( is_wp_error( $selector ) ) return $selector;
 
     $field_name = sanitize_text_field( $input['field_name'] );
@@ -345,7 +368,7 @@ function wsp_execute_acf_update_value_deep( $input ) {
 
 function wsp_execute_acf_delete_value( $input ) {
     $target_type = isset( $input['target_type'] ) ? sanitize_text_field( $input['target_type'] ) : 'post';
-    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, 'edit_posts' );
+    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, true ); // Contextual Write Check
     if ( is_wp_error( $selector ) ) return $selector;
 
     $field_name = sanitize_text_field( $input['field_name'] );
@@ -356,7 +379,7 @@ function wsp_execute_acf_delete_value( $input ) {
 
 function wsp_execute_acf_get_all_values( $input ) {
     $target_type = isset( $input['target_type'] ) ? sanitize_text_field( $input['target_type'] ) : 'post';
-    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, 'edit_posts' );
+    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, false ); // Contextual Read Check
     if ( is_wp_error( $selector ) ) return $selector;
 
     $fields = get_fields( $selector );
@@ -365,7 +388,7 @@ function wsp_execute_acf_get_all_values( $input ) {
 
 function wsp_execute_acf_bulk_update_values( $input ) {
     $target_type = isset( $input['target_type'] ) ? sanitize_text_field( $input['target_type'] ) : 'post';
-    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, 'edit_posts' );
+    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, true ); // Contextual Write Check
     if ( is_wp_error( $selector ) ) return $selector;
 
     $fields = $input['fields'];
@@ -385,7 +408,7 @@ function wsp_execute_acf_bulk_update_values( $input ) {
 
 function wsp_execute_acf_get_field_object( $input ) {
     $target_type = isset( $input['target_type'] ) ? sanitize_text_field( $input['target_type'] ) : 'post';
-    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, 'edit_posts' );
+    $selector    = wsp_acf_validate_target( $input['target_id'], $target_type, false ); // Contextual Read Check
     if ( is_wp_error( $selector ) ) return $selector;
 
     $field_selector = sanitize_text_field( $input['field_selector'] );
@@ -544,23 +567,7 @@ function wsp_execute_acf_update_option_value( $input ) {
     return array( 'success' => true, 'field_name' => $field_name, 'value' => get_field( $field_name, 'options' ) );
 }
 
-function wsp_execute_acf_delete_options_page( $input ) {
-    $cap_check = wsp_acf_check_cap( 'manage_options' );
-    if ( is_wp_error( $cap_check ) ) return $cap_check;
-
-    if ( ! function_exists( 'acf_get_options_pages' ) ) {
-         return new WP_Error( 'unsupported', 'ACF Pro required.' );
-    }
-
-    $menu_slug = sanitize_key( $input['menu_slug'] );
-    global $acf_options_pages;
-    if ( isset( $acf_options_pages[ $menu_slug ] ) ) {
-        unset( $acf_options_pages[ $menu_slug ] );
-        return array( 'success' => true, 'message' => sprintf( 'Options page "%s" removed.', $menu_slug ) );
-    }
-
-    return new WP_Error( 'not_found', 'Options page not found.' );
-}
+// Option page delete tool (wsp_acf_delete_options_page) has been completely removed to comply with issue #2
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTRATION (Back-compat / Dual Mode registration)
@@ -601,7 +608,6 @@ function wsp_register_acf_abilities() {
         'wsp/acf-create-options-page' => array( 'label' => 'Create Options Page',    'desc' => 'Register Options Page.', 'cap' => $can_admin, 'callback' => 'wsp_execute_acf_create_options_page' ),
         'wsp/acf-get-option-value'    => array( 'label' => 'Get Options Page Value',  'desc' => 'Get value from options page.', 'cap' => $can_edit, 'callback' => 'wsp_execute_acf_get_option_value' ),
         'wsp/acf-update-option-value' => array( 'label' => 'Update Options Value',    'desc' => 'Update value on options page.', 'cap' => $can_admin, 'callback' => 'wsp_execute_acf_update_option_value' ),
-        'wsp/acf-delete-options-page' => array( 'label' => 'Delete Options Page',    'desc' => 'Deregister an Options Page.', 'cap' => $can_admin, 'callback' => 'wsp_execute_acf_delete_options_page' ),
     );
 
     foreach ( $mapping as $key => $data ) {
