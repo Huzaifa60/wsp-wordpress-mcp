@@ -38,11 +38,12 @@ require_once WSP_MCP_DIR . 'includes/abilities/site.php';
 require_once WSP_MCP_DIR . 'includes/abilities/yoast.php';
 require_once WSP_MCP_DIR . 'includes/abilities/elementor.php';
 require_once WSP_MCP_DIR . 'includes/abilities/woocommerce.php';
+require_once WSP_MCP_DIR . 'includes/abilities/acf.php'; // Included ACF Pro Abilities
 
 add_action( 'admin_menu',                       'wsp_mcp_add_menu' );
 add_action( 'admin_init',                       'wsp_mcp_register_settings' );
 
-// Native MCP server (v2.0) — booted late so Elementor/Yoast classes are loaded
+// Native MCP server (v2.0) — booted late so Elementor/Yoast/ACF classes are loaded
 // before the tool registry is built. Registers its own REST endpoint.
 add_action( 'plugins_loaded', array( 'WSP_MCP_Server', 'init' ) );
 add_action( 'plugins_loaded', 'wsp_mcp_maybe_upgrade_db' );
