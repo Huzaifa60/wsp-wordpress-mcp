@@ -91,6 +91,12 @@ function wsp_mcp_ability_registry() {
         // THEMES
         'wsp/get-themes'   => array( 'label' => 'Read Themes',  'description' => 'List installed themes and which one is active.', 'group' => 'Themes', 'access' => 'read',  'default' => false ),
         'wsp/switch-theme' => array( 'label' => 'Switch Theme', 'description' => 'Activate a different installed theme.',          'group' => 'Themes', 'access' => 'write', 'default' => false ),
+        // CUSTOM POST TYPES
+        'wsp/get-post-types' => array( 'label' => 'Read Post Types',  'description' => 'List registered custom post types (excludes built-in Posts/Pages).', 'group' => 'Custom Post Types', 'access' => 'read',  'default' => false ),
+        'wsp/get-cpt-items'  => array( 'label' => 'Read CPT Items',   'description' => 'List items of a given custom post type.',                            'group' => 'Custom Post Types', 'access' => 'read',  'default' => false ),
+        'wsp/create-cpt-item'=> array( 'label' => 'Create CPT Item',  'description' => 'Create a new item of a given custom post type.',                     'group' => 'Custom Post Types', 'access' => 'write', 'default' => false ),
+        'wsp/update-cpt-item'=> array( 'label' => 'Update CPT Item',  'description' => 'Update an existing custom post type item by ID.',                    'group' => 'Custom Post Types', 'access' => 'write', 'default' => false ),
+        'wsp/delete-cpt-item'=> array( 'label' => 'Delete CPT Item',  'description' => 'Move a custom post type item to trash by ID.',                       'group' => 'Custom Post Types', 'access' => 'write', 'default' => false ),
         // MENUS
         'wsp/get-menus'            => array( 'label' => 'Read Menus',           'description' => 'List all navigation menus with item counts and assigned locations.', 'group' => 'Menus', 'access' => 'read',  'default' => false ),
         'wsp/get-menu-items'       => array( 'label' => 'Read Menu Items',      'description' => 'List the items inside a specific navigation menu.',                  'group' => 'Menus', 'access' => 'read',  'default' => false ),
