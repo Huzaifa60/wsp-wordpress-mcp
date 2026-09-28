@@ -2,7 +2,7 @@
 
 > **By [WebSensePro](https://websensepro.com) — Official Shopify Partner & WordPress Agency**
 
-[![Version](https://img.shields.io/badge/Version-2.9.1-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
+[![Version](https://img.shields.io/badge/Version-2.9.2-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
 [![YouTube](https://img.shields.io/badge/YouTube-140K%2B%20Subscribers-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/websensepro)
 [![License](https://img.shields.io/badge/License-GPL%202.0-green?style=for-the-badge)](LICENSE)
 
@@ -42,7 +42,11 @@ Turn any WordPress site into a **Model Context Protocol (MCP) server** so AI age
 
 ---
 
-## ✨ What's New in v2.9.1
+## ✨ What's New in v2.9.2
+
+- Minor updates.
+
+## v2.9.1
 
 - 👥 **Create / Update Users** — add new users (password auto-generated if you don't supply one, role defaults to `subscriber`) and edit email, display name, role, or password. Require `create_users` / `edit_users`; **off by default**.
 - ⚙️ **Update Site Info & Permalinks** — change the site title, tagline, and admin email, and set the permalink structure (e.g. `/%postname%/`). Require `manage_options`; **off by default**.

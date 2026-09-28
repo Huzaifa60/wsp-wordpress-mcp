@@ -10,6 +10,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Removed — Website sync automation (repo dev tooling only; plugin unchanged)
+
+- Deleted `.github/workflows/sync-abilities.yml` and the `bin/` generators (`lib-abilities.php`,
+  `generate-abilities-md.php`, `patch-website.php`). wspmcp.com (formerly freewordpressmcp.com) is being rebuilt and its
+  tool list is no longer generated from `registry.php`, so pushes to `main` no longer open PRs on
+  the website repo. Dropped the now-unused `abilities.md` / `abilities.json` `.gitignore` entries
+  and the "Website sync automation" section of `AGENTS.md`.
+- Nothing in the shipped plugin zip changed — no version bump.
+
+---
+
+## [2.9.2] — 2026-09-28
+
+Released as "Minor updates".
+
 ### Added — Review request notice
 
 - New `includes/admin/review-notice.php`: a notice on the **Plugins** screen and the four MCP pages
@@ -27,15 +42,6 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed — Tool count on the promo card
 
 - Sidebar card now reads **190+ Tools Available** (was 170+); the registry has 196 abilities.
-
-### Removed — Website sync automation (repo dev tooling only; plugin unchanged)
-
-- Deleted `.github/workflows/sync-abilities.yml` and the `bin/` generators (`lib-abilities.php`,
-  `generate-abilities-md.php`, `patch-website.php`). wspmcp.com (formerly freewordpressmcp.com) is being rebuilt and its
-  tool list is no longer generated from `registry.php`, so pushes to `main` no longer open PRs on
-  the website repo. Dropped the now-unused `abilities.md` / `abilities.json` `.gitignore` entries
-  and the "Website sync automation" section of `AGENTS.md`.
-- Nothing in the shipped plugin zip changed — no version bump.
 
 ---
 

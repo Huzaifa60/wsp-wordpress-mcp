@@ -31,7 +31,7 @@ These three files give you complete project understanding without touching the c
 ## What this plugin is
 
 **Plugin Name:** WSP MCP - AI Agents Connector  
-**Version:** 2.9.1
+**Version:** 2.9.2
 **Slug/prefix:** `wsp`  
 **WP option key:** `wsp_mcp_abilities`  
 **Constant prefix:** `WSP_MCP_`
@@ -225,7 +225,7 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
 
 | Constant | Value |
 |---|---|
-| `WSP_MCP_VERSION` | `'2.9.1'` |
+| `WSP_MCP_VERSION` | `'2.9.2'` |
 | `WSP_MCP_OPTION` | `'wsp_mcp_abilities'` (per-ability on/off toggles) |
 | `WSP_MCP_DIR` | `plugin_dir_path(__FILE__)` |
 
@@ -785,7 +785,7 @@ Only registered if `wsp_uae_is_active()`. Adds 45 tools to manipulate UAE widget
       the same pattern (verify the exact scheme/param shape against that vendor's docs before
       shipping — see the Cursor link above for the level of confirmation expected).
 
-### Review notice — `review-notice.php` (Unreleased)
+### Review notice — `review-notice.php` (v2.9.2)
 
 - Asks admins for a WordPress.org review: "Is WSP MCP working for you? A review helps other people
   find it." **Never on activation** — it only appears once option `wsp_mcp_first_success` exists.

@@ -4,7 +4,7 @@ Tags: mcp, ai, claude, model context protocol, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.9.1
+Stable tag: 2.9.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -154,6 +154,9 @@ https://youtu.be/hxhjs3IUYQE
 
 == Changelog ==
 
+= 2.9.2 =
+* Minor updates.
+
 = 2.9.1 =
 * New: Create User and Update User tools. Create User auto-generates a password if none is supplied and defaults the role to subscriber; Update User edits email, display name, role, or password. Require `create_users` / `edit_users`. OFF by default.
 * New: Update Site Info (title, tagline, admin email) and Update Permalink Structure tools. Require `manage_options`. OFF by default.
@@ -269,6 +272,9 @@ https://youtu.be/hxhjs3IUYQE
 * Elementor abilities, modular architecture, auto config generator.
 
 == Upgrade Notice ==
+
+= 2.9.2 =
+Minor updates. No action needed.
 
 = 2.9.1 =
 Adds eight tools for users, site settings, plugin activation, and themes. All new tools are OFF by default — enable them from MCP > Settings if you want them. No action needed otherwise.
