@@ -2,7 +2,7 @@
 
 > **By [WebSensePro](https://websensepro.com) — Official Shopify Partner & WordPress Agency**
 
-[![Version](https://img.shields.io/badge/Version-2.9.0-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
+[![Version](https://img.shields.io/badge/Version-2.9.1-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
 [![YouTube](https://img.shields.io/badge/YouTube-140K%2B%20Subscribers-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/websensepro)
 [![License](https://img.shields.io/badge/License-GPL%202.0-green?style=for-the-badge)](LICENSE)
 
@@ -38,18 +38,27 @@ Turn any WordPress site into a **Model Context Protocol (MCP) server** so AI age
 | OpenClaw | [Video](https://youtu.be/GLyLzxVOxm4) |
 | Google Antigravity | [Video](https://youtu.be/2gRIRcqqOpo) |
 | Codex | [Video](https://youtu.be/hxhjs3IUYQE) |
-| All tutorials & abilities directory | [freewordpressmcp.com](https://freewordpressmcp.com/) |
+| All tutorials & abilities directory | [wspmcp.com](https://wspmcp.com/) |
 
 ---
 
-## ✨ What's New in v2.9.0
+## ✨ What's New in v2.9.1
+
+- 👥 **Create / Update Users** — add new users (password auto-generated if you don't supply one, role defaults to `subscriber`) and edit email, display name, role, or password. Require `create_users` / `edit_users`; **off by default**.
+- ⚙️ **Update Site Info & Permalinks** — change the site title, tagline, and admin email, and set the permalink structure (e.g. `/%postname%/`). Require `manage_options`; **off by default**.
+- 🔌 **Activate / Deactivate Plugins** — toggle any installed plugin by its file path (e.g. `akismet/akismet.php`). This plugin refuses to deactivate itself so the MCP connection can't cut itself off. Require `activate_plugins`; **off by default**.
+- 🎨 **Themes tool group** — list installed themes and switch the active theme. Require `switch_themes`; **off by default**.
+
+Contributed by [@dulaj44](https://github.com/dulaj44) in [#42](https://github.com/bilalnaseer/wsp-wordpress-mcp/pull/42).
+
+## v2.9.0
 
 - 🧭 **Navigation Menus tool group** — nine new tools to list menus and their items, create and delete menus, add / update / remove menu items (custom links, posts, pages, categories), list your theme's menu locations, and assign or unassign a menu to a location. Require `edit_theme_options`; **off by default**. Contributed by [@dulaj44](https://github.com/dulaj44) in [#41](https://github.com/bilalnaseer/wsp-wordpress-mcp/pull/41).
 - 📄 **Read Post tool** — fetch a single post by ID in **any** status (draft, pending, private, trash) with its full content, so an agent can review a draft before updating it. Enforces per-post read permission; **off by default**. Closes [#38](https://github.com/bilalnaseer/wsp-wordpress-mcp/issues/38).
 - 🐛 **Audit Log accuracy** — permission-denied results from the new Read Post tool are now logged as denied, not success.
 - 🐛 **Add Menu Item validation** — an `object_id` whose post type doesn't match the requested `type` is now rejected instead of silently stored.
 
-**Recent releases:** v2.8.0 — one-click Claude Connector sign-in (OAuth 2.1) + Analytics dashboard · v2.7.1 — object-level authorization on write tools (Patchstack) · v2.7.0 — Audit Log · v2.6.x — WPForms, Contact Form 7, Gravity Forms, UAE, Elementor design tools.
+**Recent releases:** v2.9.0 — Navigation Menus tool group + Read Post tool · v2.8.0 — one-click Claude Connector sign-in (OAuth 2.1) + Analytics dashboard · v2.7.1 — object-level authorization on write tools (Patchstack) · v2.7.0 — Audit Log · v2.6.x — WPForms, Contact Form 7, Gravity Forms, UAE, Elementor design tools.
 
 📋 **Full history:** see [CHANGELOG.md](CHANGELOG.md).
 
@@ -77,8 +86,13 @@ Turn any WordPress site into a **Model Context Protocol (MCP) server** so AI age
 | List / Get / Count Media | read |
 | Update / Delete / Upload Media *(from URL or base64)* | write |
 | Read Users | read |
+| Create / Update Users | write |
 | Search Content | read |
 | Read Site Info & Active Plugins | read |
+| Update Site Info (title, tagline, admin email) / Permalink Structure | write |
+| Activate / Deactivate Plugins | write |
+| Read Themes | read |
+| Switch Theme | write |
 | Read Menus / Menu Items / Menu Locations | read |
 | Create / Delete Menu, Add / Update / Delete Menu Item, Assign Location | write |
 

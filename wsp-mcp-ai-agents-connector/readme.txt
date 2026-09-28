@@ -4,7 +4,7 @@ Tags: mcp, ai, claude, model context protocol, woocommerce
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.9.0
+Stable tag: 2.9.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,7 +16,7 @@ WSP MCP - AI Agents Connector turns your WordPress site into a Model Context Pro
  
 The plugin ships its **own native MCP server**. You do not need the WordPress MCP Adapter or any companion plugin: activate, copy your connection details from **MCP > Connection**, and connect. WooCommerce tools (products, orders, refunds, coupons, customers, reports) are available when WooCommerce is active, Advanced Custom Fields tools (field groups, fields, values, post types, taxonomies, options pages) when ACF is active, Ultimate Addons for Elementor (UAE) tools (widgets, templates, layout building, and settings) when UAE is active, and Gravity Forms tools (forms, entries, notifications, and confirmations) when Gravity Forms is active.
  
-Built and maintained by the [WebSensePro](https://websensepro.com/) team. For documentation, setup guides, and connection help, visit the plugin home at [freewordpressmcp.com](https://freewordpressmcp.com/).
+Built and maintained by the [WebSensePro](https://websensepro.com/) team. For documentation, setup guides, and connection help, visit the plugin home at [wspmcp.com](https://wspmcp.com/).
 
 = Video tutorial =
 
@@ -46,9 +46,10 @@ Every tool is individually toggleable in **MCP > Settings**, and all write tools
 * Tags — list, create, update, delete
 * Comments — read, approve, and delete
 * Media — read the media library
-* Users — read user data
-* Site info — read general site details
-* Plugins — list active plugins
+* Users — read, create, and update users
+* Site info — read general site details; update title, tagline, admin email, and permalink structure
+* Plugins — list active plugins; activate and deactivate plugins
+* Themes — list installed themes and switch the active theme
 * Search — search across site content
  
 **Yoast SEO** (requires Yoast SEO)
@@ -105,7 +106,7 @@ Every tool is individually toggleable in **MCP > Settings**, and all write tools
 
 = Links =
  
-* Plugin home & docs: [freewordpressmcp.com](https://freewordpressmcp.com/)
+* Plugin home & docs: [wspmcp.com](https://wspmcp.com/)
 * Built by: [WebSensePro](https://websensepro.com/)
 
 == Installation ==
@@ -148,6 +149,14 @@ Watch the step-by-step video tutorial:
 https://youtu.be/hxhjs3IUYQE
 
 == Changelog ==
+
+= 2.9.1 =
+* New: Create User and Update User tools. Create User auto-generates a password if none is supplied and defaults the role to subscriber; Update User edits email, display name, role, or password. Require `create_users` / `edit_users`. OFF by default.
+* New: Update Site Info (title, tagline, admin email) and Update Permalink Structure tools. Require `manage_options`. OFF by default.
+* New: Activate Plugin and Deactivate Plugin tools. Require `activate_plugins`. Deactivate Plugin refuses to deactivate this plugin, so the MCP connection cannot cut itself off. OFF by default.
+* New: Themes tool group — Read Themes and Switch Theme. Require `switch_themes`. OFF by default.
+* Changed: Plugin home and docs moved to wspmcp.com. The sidebar tutorial and abilities-directory links now point there.
+* Contributed by @dulaj44.
 
 = 2.9.0 =
 * New: Navigation Menus ability group — nine tools to list menus and their items, create and delete menus, add/update/remove menu items (custom links, posts, pages, categories), list theme menu locations, and assign or unassign a menu to a location. All require `edit_theme_options` (the same capability the WordPress menu editor needs) and are OFF by default. Contributed by @dulaj44.
@@ -256,6 +265,9 @@ https://youtu.be/hxhjs3IUYQE
 * Elementor abilities, modular architecture, auto config generator.
 
 == Upgrade Notice ==
+
+= 2.9.1 =
+Adds eight tools for users, site settings, plugin activation, and themes. All new tools are OFF by default — enable them from MCP > Settings if you want them. No action needed otherwise.
 
 = 2.9.0 =
 Adds a Navigation Menus tool group (9 tools) and a single-post Read Post tool. All new tools are OFF by default — enable them from MCP > Settings if you want them. No action needed otherwise.

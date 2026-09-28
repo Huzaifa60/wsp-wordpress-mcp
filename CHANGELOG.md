@@ -10,6 +10,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Removed — Website sync automation (repo dev tooling only; plugin unchanged)
+
+- Deleted `.github/workflows/sync-abilities.yml` and the `bin/` generators (`lib-abilities.php`,
+  `generate-abilities-md.php`, `patch-website.php`). wspmcp.com (formerly freewordpressmcp.com) is being rebuilt and its
+  tool list is no longer generated from `registry.php`, so pushes to `main` no longer open PRs on
+  the website repo. Dropped the now-unused `abilities.md` / `abilities.json` `.gitignore` entries
+  and the "Website sync automation" section of `AGENTS.md`.
+- Nothing in the shipped plugin zip changed — no version bump.
+
+---
+
+## [2.9.1] — 2026-09-28
+
 ### Added — Users, Themes, Site settings, and Plugin activation abilities (PR #42)
 
 - Eight new tools, all OFF by default:
@@ -25,14 +38,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   native-tool registration, and `wsp/delete-user` registry entry are removed, so the toggle no longer
   appears under MCP > Settings > Users. Any saved toggle value for the old key is ignored.
 
-### Removed — Website sync automation (repo dev tooling only; plugin unchanged)
+### Changed
 
-- Deleted `.github/workflows/sync-abilities.yml` and the `bin/` generators (`lib-abilities.php`,
-  `generate-abilities-md.php`, `patch-website.php`). freewordpressmcp.com is being rebuilt and its
-  tool list is no longer generated from `registry.php`, so pushes to `main` no longer open PRs on
-  the website repo. Dropped the now-unused `abilities.md` / `abilities.json` `.gitignore` entries
-  and the "Website sync automation" section of `AGENTS.md`.
-- Nothing in the shipped plugin zip changed — no version bump.
+- Bumped `WSP_MCP_VERSION`, the plugin header, and `readme.txt` `Stable tag:` to 2.9.1. Updated
+  `README.md` (What's New + Available Abilities) and `readme.txt` (tools list, changelog, upgrade
+  notice) for the eight new tools.
+- Plugin home moved from freewordpressmcp.com to **wspmcp.com**. Updated the sidebar promo-card links
+  (`includes/admin/promo-cards.php` — Video Tutorials and Abilities Directory, UTM params unchanged),
+  the `readme.txt` description and links, `README.md`, and `AGENTS.md`. Past changelog entries still
+  name the old domain because that's what those releases shipped.
 
 ---
 

@@ -11,7 +11,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
- * Append UTM campaign parameters to an outbound freewordpressmcp.com link so
+ * Append UTM campaign parameters to an outbound wspmcp.com link so
  * clicks from the plugin admin are attributable in Google Analytics.
  *
  * @param string $url      Destination URL.
@@ -72,7 +72,7 @@ function wsp_mcp_render_promo_cards( $campaign ) {
             <h2>Video Tutorials</h2>
             <p>Check out our video tutorials for connecting your WordPress site with popular AI agents.</p>
             <a class="button button-secondary"
-                href="<?php echo esc_url( wsp_mcp_promo_url( 'https://freewordpressmcp.com/tutorials', 'tutorials_card', $campaign ) ); ?>"
+                href="<?php echo esc_url( wsp_mcp_promo_url( 'https://wspmcp.com/tutorials', 'tutorials_card', $campaign ) ); ?>"
                 target="_blank"
                 rel="noopener">Watch Tutorials</a>
         </div>
@@ -82,7 +82,7 @@ function wsp_mcp_render_promo_cards( $campaign ) {
             <h2>170+ Tools Available</h2>
             <p>This plugin ships over 170 MCP tools across WordPress core and popular plugins. Browse the full list in our abilities directory.</p>
             <a class="button button-secondary"
-                href="<?php echo esc_url( wsp_mcp_promo_url( 'https://freewordpressmcp.com/abilities-directory', 'directory_card', $campaign ) ); ?>"
+                href="<?php echo esc_url( wsp_mcp_promo_url( 'https://wspmcp.com/abilities-directory', 'directory_card', $campaign ) ); ?>"
                 target="_blank"
                 rel="noopener">Browse All Tools</a>
         </div>

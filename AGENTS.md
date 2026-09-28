@@ -31,7 +31,7 @@ These three files give you complete project understanding without touching the c
 ## What this plugin is
 
 **Plugin Name:** WSP MCP - AI Agents Connector  
-**Version:** 2.9.0
+**Version:** 2.9.1
 **Slug/prefix:** `wsp`  
 **WP option key:** `wsp_mcp_abilities`  
 **Constant prefix:** `WSP_MCP_`
@@ -174,7 +174,7 @@ exists because its absence is an exploitable bug, not a style preference.
    admin toggle exists; set `default`).
 4. Enable it in MCP > Settings, then **reconnect the client** (see gotcha below).
 
-> The public tool list on **freewordpressmcp.com** is maintained separately in the website repo —
+> The public tool list on **wspmcp.com** is maintained separately in the website repo —
 > it is **not** generated from this repo. (The old `bin/` generators + `sync-abilities.yml` GitHub
 > Action were removed; see CHANGELOG `[Unreleased]`.)
 
@@ -224,7 +224,7 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
 
 | Constant | Value |
 |---|---|
-| `WSP_MCP_VERSION` | `'2.9.0'` |
+| `WSP_MCP_VERSION` | `'2.9.1'` |
 | `WSP_MCP_OPTION` | `'wsp_mcp_abilities'` (per-ability on/off toggles) |
 | `WSP_MCP_DIR` | `plugin_dir_path(__FILE__)` |
 
@@ -388,7 +388,7 @@ admin toggle for each is driven by its entry in `wsp_mcp_ability_registry()` (`r
 - `get-plugins` loads `wp-admin/includes/plugin.php` if needed, then intersects all plugins with active list.
 - `deactivate-plugin` refuses to deactivate this plugin itself. Otherwise the MCP connection would cut itself off.
 
-#### Themes (`themes.php`)
+#### Themes (`themes.php`) — added v2.9.1
 
 | Ability key | Label | Access | Default | Permission | Inputs |
 |---|---|---|---|---|---|
@@ -792,7 +792,7 @@ Shared by **both** admin pages; loaded before them in the main plugin file so th
 - `wsp_mcp_promo_css()` — returns the `.wsp-layout` / `.wsp-side` / `.wsp-promo` CSS, concatenated
   onto each page's own inline stylesheet (both pages call `wp_add_inline_style('common', …)`).
 - `wsp_mcp_render_promo_cards( $campaign )` — echoes the `.wsp-side` column: **Video Tutorials**
-  (`/tutorials`) and **170+ Tools Available** (`/abilities-directory`), both on freewordpressmcp.com.
+  (`/tutorials`) and **170+ Tools Available** (`/abilities-directory`), both on wspmcp.com.
 - Campaigns in use: `abilities_page` (settings-page.php), `connection_page` (connection-page.php).
 - Links use `target="_blank" rel="noopener"` — **not** `noreferrer`, which would strip the referrer
   and break GA attribution on our own destination site. URLs pass through `esc_url()`.
