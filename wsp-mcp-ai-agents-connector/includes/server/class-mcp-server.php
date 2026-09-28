@@ -246,6 +246,7 @@ class WSP_MCP_Server {
 		}
 
 		WSP_MCP_Audit_Log::log( $name, WSP_MCP_Audit_Log::STATUS_SUCCESS, '', self::elapsed_ms( $start ), $category );
+		wsp_mcp_review_record_success();
 		return self::tool_text( $id, wp_json_encode( $result, JSON_PRETTY_PRINT ), false );
 	}
 

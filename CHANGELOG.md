@@ -10,6 +10,24 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Review request notice
+
+- New `includes/admin/review-notice.php`: a notice on the **Plugins** screen and the four MCP pages
+  (Settings, Connection, Audit Log, Analytics) asking "Is WSP MCP
+  working for you? A review helps other people find it.", with **Leave a review** (links to the
+  WordPress.org review form), **Maybe later** (hides for 14 days) and **Don't show again**.
+- Only shown after the first successful AI tool call — never on activation, when nobody has an
+  opinion yet. `WSP_MCP_Server::do_tools_call()` records that moment once in option
+  `wsp_mcp_first_success`. Admins only (`manage_options`); dismissal is per user (user meta
+  `wsp_mcp_review_notice`), nonce-protected, and works without JavaScript.
+- Sites already in use before this update qualify immediately: if the option is missing, the notice
+  checks the audit log once for any past successful call and records it.
+- `uninstall.php` removes the new option and user meta.
+
+### Changed — Tool count on the promo card
+
+- Sidebar card now reads **190+ Tools Available** (was 170+); the registry has 196 abilities.
+
 ### Removed — Website sync automation (repo dev tooling only; plugin unchanged)
 
 - Deleted `.github/workflows/sync-abilities.yml` and the `bin/` generators (`lib-abilities.php`,

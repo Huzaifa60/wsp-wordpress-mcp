@@ -33,6 +33,7 @@ require_once WSP_MCP_DIR . 'includes/admin/settings-page.php';
 require_once WSP_MCP_DIR . 'includes/admin/connection-page.php';
 require_once WSP_MCP_DIR . 'includes/admin/audit-log-page.php';
 require_once WSP_MCP_DIR . 'includes/admin/analytics-page.php';
+require_once WSP_MCP_DIR . 'includes/admin/review-notice.php';
 // Native MCP server (v2.0).
 require_once WSP_MCP_DIR . 'includes/audit/class-audit-log.php';
 require_once WSP_MCP_DIR . 'includes/server/class-session-store.php';

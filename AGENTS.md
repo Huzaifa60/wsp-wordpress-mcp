@@ -208,6 +208,7 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
         │   └── native-tools.php ← registers every wsp_execute_* as a native MCP tool
         ├── admin/
         │   ├── promo-cards.php      ← shared sidebar cards + UTM link builder (both admin pages)
+        │   ├── review-notice.php    ← WP.org review request on the Plugins screen + MCP pages, after first successful tool call
         │   ├── settings-page.php    ← toggle UI (MCP > Settings) — accordion groups + legacy-page redirect
         │   └── connection-page.php  ← native endpoint + API key + per-client tabs (MCP > Connection)
         └── abilities/           ← wsp_execute_* logic (called by the native server)
@@ -229,7 +230,9 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
 | `WSP_MCP_DIR` | `plugin_dir_path(__FILE__)` |
 
 **Other persistent state:** option `wsp_mcp_api_key` (native API key), option `wsp_mcp_db_version`
-(migration gate), option `wsp_mcp_oauth_enabled` (OAuth opt-in, **default off**), DB tables
+(migration gate), option `wsp_mcp_oauth_enabled` (OAuth opt-in, **default off**), option
+`wsp_mcp_first_success` (timestamp of the first successful tool call — gates the review notice),
+user meta `wsp_mcp_review_notice` (`'dismissed'` or a snooze-until timestamp), DB tables
 `{prefix}wsp_mcp_sessions`, `{prefix}wsp_mcp_audit_log`, `{prefix}wsp_mcp_oauth_clients`,
 `{prefix}wsp_mcp_oauth_codes`, `{prefix}wsp_mcp_oauth_tokens`, cron events
 `wsp_mcp_session_cleanup`, `wsp_mcp_audit_log_cleanup`, `wsp_mcp_oauth_cleanup`.
@@ -782,6 +785,30 @@ Only registered if `wsp_uae_is_active()`. Adds 45 tools to manipulate UAE widget
       the same pattern (verify the exact scheme/param shape against that vendor's docs before
       shipping — see the Cursor link above for the level of confirmation expected).
 
+### Review notice — `review-notice.php` (Unreleased)
+
+- Asks admins for a WordPress.org review: "Is WSP MCP working for you? A review helps other people
+  find it." **Never on activation** — it only appears once option `wsp_mcp_first_success` exists.
+- `wsp_mcp_review_record_success()` is called from `WSP_MCP_Server::do_tools_call()` right after the
+  `STATUS_SUCCESS` audit-log write; it `add_option()`s the timestamp once (autoloaded, so later calls
+  cost nothing). **Backfill:** while the option is missing, `wsp_mcp_review_backfill_from_log()`
+  checks the audit log for any past `success` row (so sites that used the plugin before this notice
+  existed qualify immediately) and records the option if found. One-way only — once the option is set
+  the log is never consulted again, so clearing/pruning the log can't make the notice reappear or vanish.
+- Rendered on `admin_notices`, **only** on the Plugins screen and this plugin's four MCP pages
+  (`page=` `wsp-mcp-abilities` / `wsp-mcp-connection` / `wsp-mcp-audit-log` / `wsp-mcp-analytics`),
+  checked by `wsp_mcp_review_is_allowed_screen()`; only for `manage_options`. MCP pages are matched on
+  the `page` query arg, not the screen ID, because submenu screen IDs derive from the translatable
+  menu title. **Do not add the Dashboard or make it site-wide** — that's the nag pattern WP.org
+  guideline 11 targets.
+- Three no-JS buttons, each a nonce-protected `admin_post_wsp_mcp_review_notice` link with `choice=`:
+  `review` (dismiss forever, then `wp_redirect()` to the hard-coded `WSP_MCP_REVIEW_URL`), `snooze`
+  (hide for `WSP_MCP_REVIEW_SNOOZE_DAYS` = 14 days), `dismiss` (hide forever). State is **per user**
+  in user meta `wsp_mcp_review_notice`. There is intentionally no `is-dismissible` X — core's X only
+  hides client-side and would bring the notice back on the next load.
+- Don't make it reappear after "Don't show again", and don't show it to non-admins — both break
+  WordPress.org guideline 11.
+
 ### Promo cards — `promo-cards.php` (v2.6.7)
 
 Shared by **both** admin pages; loaded before them in the main plugin file so the functions exist.
@@ -792,7 +819,7 @@ Shared by **both** admin pages; loaded before them in the main plugin file so th
 - `wsp_mcp_promo_css()` — returns the `.wsp-layout` / `.wsp-side` / `.wsp-promo` CSS, concatenated
   onto each page's own inline stylesheet (both pages call `wp_add_inline_style('common', …)`).
 - `wsp_mcp_render_promo_cards( $campaign )` — echoes the `.wsp-side` column: **Video Tutorials**
-  (`/tutorials`) and **170+ Tools Available** (`/abilities-directory`), both on wspmcp.com.
+  (`/tutorials`) and **190+ Tools Available** (`/abilities-directory`), both on wspmcp.com.
 - Campaigns in use: `abilities_page` (settings-page.php), `connection_page` (connection-page.php).
 - Links use `target="_blank" rel="noopener"` — **not** `noreferrer`, which would strip the referrer
   and break GA attribution on our own destination site. URLs pass through `esc_url()`.

@@ -8,11 +8,11 @@ Stable tag: 2.9.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Expose your WordPress site to AI agents (Claude, Cursor, and other MCP clients) through a built-in MCP server — no companion plugin required.
+Free WordPress MCP plugin: connect Claude, Cursor, and any AI agent to your site through a built-in MCP server — no companion plugin required.
 
 == Description ==
 
-WSP MCP - AI Agents Connector turns your WordPress site into a Model Context Protocol (MCP) server. AI clients can read and edit posts, pages, categories, tags, media, comments, users, and (when installed) Yoast SEO meta and Elementor page content — all under granular, per-ability admin control.
+WSP MCP - AI Agents Connector is a free WordPress plugin that turns your WordPress site into a Model Context Protocol (MCP) server. AI clients can read and edit posts, pages, categories, tags, media, comments, users, and (when installed) Yoast SEO meta and Elementor page content — all under granular, per-ability admin control.
  
 The plugin ships its **own native MCP server**. You do not need the WordPress MCP Adapter or any companion plugin: activate, copy your connection details from **MCP > Connection**, and connect. WooCommerce tools (products, orders, refunds, coupons, customers, reports) are available when WooCommerce is active, Advanced Custom Fields tools (field groups, fields, values, post types, taxonomies, options pages) when ACF is active, Ultimate Addons for Elementor (UAE) tools (widgets, templates, layout building, and settings) when UAE is active, and Gravity Forms tools (forms, entries, notifications, and confirmations) when Gravity Forms is active.
  
@@ -117,6 +117,10 @@ Every tool is individually toggleable in **MCP > Settings**, and all write tools
 4. Add the connection to your MCP client (Claude Desktop config, or any HTTP MCP client / IDE).
 
 == Frequently Asked Questions ==
+
+= Is WSP MCP a free WordPress MCP plugin? =
+
+Yes. WSP MCP is a free WordPress plugin released under the GPL. The MCP server, both authentication methods, the Audit Log, the Analytics dashboard, and every tool listed above are included — no account or external service is needed to run it.
 
 = Do I need the WordPress MCP Adapter plugin? =
 
