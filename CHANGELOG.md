@@ -8,7 +8,53 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [2.9.3] — 2026-10-02
+
+### Added — Custom Post Type tools (PR #43)
+
+- Five tools in new `includes/abilities/cpt.php`, all OFF by default: `wsp_get_post_types`,
+  `wsp_get_cpt_items`, `wsp_create_cpt_item`, `wsp_update_cpt_item`, `wsp_delete_cpt_item` (trash).
+  Work with any public, non-built-in post type. Contributed by
+  [@dulaj44](https://github.com/dulaj44) in [#43](https://github.com/bilalnaseer/wsp-wordpress-mcp/pull/43).
+
+### Security — Object-level permission checks on the Custom Post Type tools
+
+As merged, the CPT tools only checked one broad capability per tool (the same class of bug fixed in
+2.7.1). Fixed before release:
+- Update/trash now use `wsp_mcp_guard_edit_post()` / `wsp_mcp_guard_delete_post()`, so a
+  Contributor can no longer edit or trash other users' items, and `wsp_mcp_guard_post_status()`
+  blocks publishing without the type's publish capability.
+- Create now requires the post type's own `create_posts` (and `publish_posts` to publish), so an
+  Author can no longer create items in types such as WooCommerce products.
+- Only public, non-built-in types are accepted, and the caller needs the type's own `edit_posts`.
+  Previously any registered type could be listed, including `user_request` (privacy requests, titled
+  with email addresses).
+- Listing drafts/pending/scheduled items shows only the caller's own unless they can edit others'.
+
+### Changed — Plain-language name, description and readme
+
+- Plugin name is now **WSP MCP - Free MCP Plugin for WordPress: Connect Claude, ChatGPT & AI Agents**
+  (plugin header and `readme.txt` title, kept identical). The description on the Plugins screen and
+  the readme short description now say what the plugin does for the user instead of how it works.
+- `readme.txt` description, installation and FAQ rewritten in plain language around the keyword
+  "free MCP plugin for WordPress": example prompts, a "What is MCP?" explainer, a simpler tool list
+  (now also listing Menus, Rank Math, Contact Form 7 and WPForms), and new FAQs on safety and on
+  reconnecting after enabling tools. Tags are now `mcp, ai, claude, chatgpt, ai agent`. The
+  changelog section is unchanged.
+- GitHub `README.md` rewritten to match: new title, plain-language intro with example prompts,
+  a ChatGPT connection note, a Custom Post Types tools table, and updated WebSensePro details.
+
+### Added — Quick links on the Plugins screen
+
+- New `includes/admin/plugin-links.php` adds **Settings | Connection | About Us** under the plugin
+  name (admins only).
+
+### Added — MCP > About Us page
+
+- New `includes/admin/about-page.php`: an **About Us** submenu directly below Analytics with
+  WebSensePro's description, stats, services, values, contact details and links, taken from
+  websensepro.com. Content is static (no external requests); websensepro.com links carry UTM
+  campaign `about_page`.
 
 ### Removed — Website sync automation (repo dev tooling only; plugin unchanged)
 

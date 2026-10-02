@@ -1,138 +1,105 @@
-=== WSP MCP - WordPress MCP - Connect Claude, codex, antigravity or any other AI Agent ===
+=== WSP MCP - Free MCP Plugin for WordPress: Connect Claude, ChatGPT & AI Agents ===
 Contributors: bilalnaseer
-Tags: mcp, ai, claude, model context protocol, woocommerce
+Tags: mcp, ai, claude, chatgpt, ai agent
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.9.2
+Stable tag: 2.9.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Free WordPress MCP plugin: connect Claude, Cursor, and any AI agent to your site through a built-in MCP server — no companion plugin required.
+Free MCP plugin for WordPress. Connect Claude, ChatGPT, Cursor or any AI agent and manage your site by chat. 190+ tools, no coding needed.
 
 == Description ==
 
-WSP MCP - AI Agents Connector is a free WordPress plugin that turns your WordPress site into a Model Context Protocol (MCP) server. AI clients can read and edit posts, pages, categories, tags, media, comments, users, and (when installed) Yoast SEO meta and Elementor page content — all under granular, per-ability admin control.
- 
-The plugin ships its **own native MCP server**. You do not need the WordPress MCP Adapter or any companion plugin: activate, copy your connection details from **MCP > Connection**, and connect. WooCommerce tools (products, orders, refunds, coupons, customers, reports) are available when WooCommerce is active, Advanced Custom Fields tools (field groups, fields, values, post types, taxonomies, options pages) when ACF is active, Ultimate Addons for Elementor (UAE) tools (widgets, templates, layout building, and settings) when UAE is active, and Gravity Forms tools (forms, entries, notifications, and confirmations) when Gravity Forms is active.
- 
-Built and maintained by the [WebSensePro](https://websensepro.com/) team. For documentation, setup guides, and connection help, visit the plugin home at [wspmcp.com](https://wspmcp.com/).
+**WSP MCP is a free MCP plugin for WordPress.** It lets AI assistants like Claude, ChatGPT, Cursor, Codex and Antigravity work directly with your website. Ask in plain English and the AI does the work:
 
-= Video tutorial =
+* "Write a blog post about our summer sale and save it as a draft."
+* "Find every page missing a meta description and suggest one."
+* "Show me this week's WooCommerce orders and mark the shipped ones as completed."
+* "Add a Contact link to the main menu."
+
+Everything is built in. You don't need another plugin, an account, or any coding. Install it, copy your connection details, paste them into your AI app, and start chatting.
+
+You stay in control: every tool has its own on/off switch, anything that changes your site is **off until you turn it on**, and the AI can only do what its WordPress user is allowed to do.
+
+Built and maintained by [WebSensePro](https://websensepro.com/). Guides and help: [wspmcp.com](https://wspmcp.com/).
+
+= Watch: set it up in a few minutes =
 
 https://youtu.be/kD2FSvL7EE0
 
-= Key features =
- 
-* Built-in MCP server over a single REST endpoint (Streamable HTTP, JSON-RPC 2.0) — no external dependency.
-* Per-ability on/off toggles in **MCP > Settings**; write abilities are off by default.
-* Two authentication methods: WordPress Application Passwords (HTTP Basic) or a plugin-generated API key (`Authorization: Bearer` or `X-WSP-MCP-API-Key`).
-* Live Configuration Generator on **MCP > Connection**: choose your AI tool and authentication method and get a ready-to-paste, correctly-formatted config snippet with a one-click copy button — nothing you type is sent to the server.
-* One-click automated connector on **MCP > Connection**: a **Download** button next to every snippet saves the exact config file with no copy-paste needed, and Cursor users get a **Connect Cursor Automatically** button that opens Cursor directly and adds the server for them — no config file to touch at all.
-* Capability checks on every tool — an AI client can only do what its authenticated user can do.
-* Full Audit Log in **MCP > Audit Log**: every tool call is recorded (tool name, time, user, IP, success/denied/error) in your own database — self-hosted, no external service, visible to administrators only.
-* Analytics & Performance Dashboard in **MCP > Analytics**: total requests, most-used tool, average response time, and error rate at a glance, plus a per-category usage breakdown and a recent-requests performance log — all computed from your own database.
-* Optional Yoast SEO and Elementor tools, shown only when those plugins are active.
- 
-= Complete tools list =
- 
-Every tool is individually toggleable in **MCP > Settings**, and all write tools are off by default.
- 
-**Core WordPress**
- 
-* Posts — read, create, update, delete
-* Pages — read, create, update, delete
-* Categories — list, create, update, delete
-* Tags — list, create, update, delete
-* Comments — read, approve, and delete
-* Media — read the media library
-* Users — read, create, and update users
-* Site info — read general site details; update title, tagline, admin email, and permalink structure
-* Plugins — list active plugins; activate and deactivate plugins
-* Themes — list installed themes and switch the active theme
-* Search — search across site content
- 
-**Yoast SEO** (requires Yoast SEO)
- 
-* Read SEO title, meta description, and focus keyphrase
-* Update SEO title, meta description, and focus keyphrase
- 
-**Elementor** (requires Elementor)
+= What is MCP? =
 
-* Pages — list pages/posts built with Elementor
-* Page structure — read the full element tree of a page
-* Elements — get a single element's settings, or find elements by widget type or content
-* Templates — list saved templates from the library
-* Editing — add widgets, add layout containers/sections, update element settings, and remove elements
-* Code-bearing widget types (HTML, Shortcode, Code) are rejected and code-bearing settings (Custom CSS, Custom Attributes) are stripped; all text settings are sanitized with `wp_kses_post()`
- 
-**WooCommerce** (requires WooCommerce — financial and PII tools require the `manage_woocommerce` capability)
- 
-* Products — list, get, create, update
-* Product variations — create
-* Orders — list, update status
-* Refunds — process refunds
-* Coupons — create, list
-* Order notes — add order notes
-* Customers — read customer data
-* Sales report — read sales reporting
-* Low-stock alerts — read low-stock products
-* Reviews — moderate product reviews
- 
-**Advanced Custom Fields** (requires ACF — structural changes require `manage_options`; value tools enforce per-object capabilities)
- 
-* Field groups — list, get, create, update, delete, import
-* Fields — list, get, create, update, delete, duplicate, sync
-* Field values — get and set with dot-notation deep access, delete, get-all, bulk-update, and field object
-* Custom post types — manage
-* Taxonomies — manage
-* Options pages — manage
+MCP (Model Context Protocol) is the standard way AI assistants connect to other apps. Think of it as a plug: once your WordPress site has an MCP plugin, any AI app that supports MCP can read and update your site, with your permission.
 
-**Gravity Forms** (requires Gravity Forms — reads require `gravityforms_edit_forms` or `gravityforms_view_entries`; writes require form/entry-specific Gravity Forms caps)
+= Why WSP MCP? =
 
-* Forms — list (ON by default), get (ON by default), create, update, delete, update form settings
-* Entries — list, get, update (status, read/starred flags, field values), delete (trash or permanent)
-* Notifications — get, create, update, delete
-* Confirmations — get, create, update, delete
-* All 18 tools are off by default (except list-forms and get-form); only registered when Gravity Forms is active
+* **100% free.** Every feature and every tool, no paid version.
+* **Easy to connect.** A Connection page with ready-made setup for Claude, Cursor, Codex, Antigravity, OpenClaw and OpenCode, with copy and download buttons. Cursor users can connect in one click.
+* **Safe by default.** Only read-only tools are on when you install. You pick what else the AI can do.
+* **See everything the AI did.** The Audit Log records every action: what, when, and by whom.
+* **Usage dashboard.** See how often the AI is used, which tools are most popular, and how fast they respond.
+* **Your data stays on your site.** Logs and stats are stored in your own database, never sent anywhere.
 
-**Ultimate Addons for Elementor** (requires UAE — structural and settings writes require `edit_posts`, `publish_posts`, or `manage_options`)
+= What your AI can do (190+ tools) =
 
-* Widgets — list, check usage, activate, deactivate, bulk toggle
-* Templates — list, get, create, duplicate, update, trash, restore Header/Footer/Blocks templates
-* Layout building — add sections, add columns, move elements, build layouts from JSON
-* Settings — get/update UAE settings, theme info, extensions, and design-system tokens
-* All 45 tools are off by default; string inputs are sanitized with `wp_kses_post()`
+**WordPress basics**
 
-= Links =
- 
-* Plugin home & docs: [wspmcp.com](https://wspmcp.com/)
-* Built by: [WebSensePro](https://websensepro.com/)
+* Posts and pages: read, write, edit, delete
+* Categories and tags
+* Comments: read, approve, delete
+* Media library: browse, upload images, edit titles and alt text
+* Menus: create menus, add or reorder links, assign menu locations
+* Users: list, create, edit
+* Site settings: title, tagline, permalinks
+* Plugins and themes: list, activate, switch
+* Custom post types
+* Site-wide search
+
+**Works with your favorite plugins** (tools appear automatically when the plugin is installed)
+
+* **WooCommerce:** products, variations, orders, refunds, coupons, customers, sales reports, low-stock alerts, reviews
+* **Yoast SEO** and **Rank Math:** SEO titles, meta descriptions, focus keyphrases
+* **Elementor:** read and edit page layouts, widgets, global colors and page settings
+* **Ultimate Addons for Elementor:** widgets, header/footer templates, layouts
+* **Advanced Custom Fields:** field groups, fields, values, post types, options pages
+* **Gravity Forms**, **Contact Form 7** and **WPForms:** forms, entries, notifications
+
+For safety, the AI can't add raw code (HTML, JavaScript or CSS) to your pages, and sensitive store tools like refunds and customer data need a shop manager or administrator account.
 
 == Installation ==
 
-1. Upload the plugin to `/wp-content/plugins/` and activate it.
-2. Go to **MCP > Settings** and enable the abilities you want to expose.
-3. Go to **MCP > Connection** to copy your endpoint URL and API key (or use a WordPress Application Password).
-4. Add the connection to your MCP client (Claude Desktop config, or any HTTP MCP client / IDE).
+1. In WordPress, go to **Plugins > Add New**, search for "WSP MCP", then install and activate it.
+2. Open **MCP > Settings** and switch on the tools you want your AI to use.
+3. Open **MCP > Connection**, pick your AI app, and copy (or download) the setup it shows.
+4. Paste it into your AI app, then restart the app. Done. Ask it something about your site.
 
 == Frequently Asked Questions ==
 
-= Is WSP MCP a free WordPress MCP plugin? =
+= Is this really a free MCP plugin for WordPress? =
 
-Yes. WSP MCP is a free WordPress plugin released under the GPL. The MCP server, both authentication methods, the Audit Log, the Analytics dashboard, and every tool listed above are included — no account or external service is needed to run it.
+Yes. WSP MCP is completely free and open source (GPL). Every tool, the Audit Log and the dashboard are included. No account, subscription or outside service is needed.
 
-= Do I need the WordPress MCP Adapter plugin? =
+= Which AI apps work with it? =
 
-No. This plugin includes its own MCP server and connects directly. As of v2.2 the older MCP Adapter / Abilities-API compatibility path has been removed; connect using the native endpoint shown on **MCP > Connection**.
+Claude (desktop, web and mobile), ChatGPT, Cursor, Codex, Google Antigravity, OpenClaw, OpenCode, and any other app that supports MCP.
 
-= How does authentication work? =
+= Do I need any other plugin, like the WordPress MCP Adapter? =
 
-Use a WordPress Application Password (sent via HTTP Basic auth) or the plugin-generated API key shown on the Connection page. Either is validated on every request, and tool actions are limited by the authenticated user's capabilities.
+No. Everything is built in.
 
-= Which AI clients are supported? =
+= Is it safe? =
 
-Any client that supports the Streamable HTTP MCP transport — Claude Desktop, MCP Inspector, IDEs, and scripts.
+Tools that change your site are off until you turn them on, and the AI can only do what its WordPress user is allowed to do. You can see every action in **MCP > Audit Log**, and you can create a new connection key at any time to cut off old ones.
+
+= How does the AI log in to my site? =
+
+The Connection page gives you a private key to paste into your AI app. Advanced users can use a WordPress Application Password instead.
+
+= I turned on new tools but my AI doesn't see them. =
+
+AI apps load the tool list when they connect. Fully quit and reopen your AI app (not just a new chat) and the new tools will appear.
 
 = How do I connect WordPress with OpenClaw? =
 
@@ -153,6 +120,12 @@ Watch the step-by-step video tutorial:
 https://youtu.be/hxhjs3IUYQE
 
 == Changelog ==
+
+= 2.9.3 =
+* New: 5 Custom Post Type tools — list your custom post types, and list, create, update and trash their items (works with any public custom post type, e.g. books, events, portfolio). Off by default.
+* New: About Us page under MCP.
+* New: Settings, Connection and About Us links under the plugin name on the Plugins screen.
+* Improved: clearer plugin name, description and readme.
 
 = 2.9.2 =
 * Minor updates.
@@ -272,6 +245,9 @@ https://youtu.be/hxhjs3IUYQE
 * Elementor abilities, modular architecture, auto config generator.
 
 == Upgrade Notice ==
+
+= 2.9.3 =
+Adds 5 Custom Post Type tools (off by default — enable them in MCP > Settings) and an About Us page. No action needed.
 
 = 2.9.2 =
 Minor updates. No action needed.

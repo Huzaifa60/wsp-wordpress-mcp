@@ -1,12 +1,29 @@
-# WSP WordPress MCP — Connect AI Agents to WordPress
+# WSP MCP — Free MCP Plugin for WordPress
+
+**Connect Claude, ChatGPT, Cursor & any AI agent to WordPress, and manage your site by chat.**
 
 > **By [WebSensePro](https://websensepro.com) — Official Shopify Partner & WordPress Agency**
 
-[![Version](https://img.shields.io/badge/Version-2.9.2-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
+[![Version](https://img.shields.io/badge/Version-2.9.3-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
 [![YouTube](https://img.shields.io/badge/YouTube-140K%2B%20Subscribers-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/websensepro)
 [![License](https://img.shields.io/badge/License-GPL%202.0-green?style=for-the-badge)](LICENSE)
 
-Turn any WordPress site into a **Model Context Protocol (MCP) server** so AI agents — Claude, Cursor, Codex, Antigravity, OpenClaw, OpenCode — can read and edit your posts, pages, media, menus, WooCommerce store, forms, SEO meta, and Elementor layouts. The MCP server is **built in**: no companion plugin, no MCP Adapter, no Node.js bridge for natively-supported clients. Every ability is an individual on/off switch in wp-admin, write abilities are off by default, and every call is recorded in a self-hosted audit log.
+WSP MCP is a **free MCP plugin for WordPress**. Install it, connect your AI app, and just ask:
+
+- *"Write a blog post about our summer sale and save it as a draft."*
+- *"Find every page missing a meta description and suggest one."*
+- *"Show me this week's WooCommerce orders and mark the shipped ones as completed."*
+- *"Add a Contact link to the main menu."*
+
+**Why WSP MCP?**
+
+- 💸 **100% free** — every feature and all 190+ tools, no paid version.
+- 🔌 **Everything built in** — no companion plugin, MCP Adapter, or account needed.
+- 🤖 **Works with your AI app** — Claude (web, desktop, mobile), ChatGPT, Cursor, Codex, Google Antigravity, OpenClaw, OpenCode, and any other MCP client.
+- 🛡️ **Safe by default** — every tool has its own on/off switch, anything that changes your site is off until you turn it on, and the AI can only do what its WordPress user is allowed to do.
+- 📋 **See everything the AI did** — a built-in Audit Log and usage dashboard, stored in your own database.
+
+> **What is MCP?** The Model Context Protocol is the standard way AI assistants connect to other apps. Once your site has an MCP plugin, any AI app that supports MCP can read and update your site — with your permission.
 
 ---
 
@@ -30,6 +47,8 @@ Turn any WordPress site into a **Model Context Protocol (MCP) server** so AI age
 
 > **Upgrading from before v2.0?** The legacy MCP-Adapter / Abilities-API path and the **MCP > Config Files** page were removed in v2.2. Re-create your connection using the native endpoint on **MCP > Connection**.
 
+> **ChatGPT:** ChatGPT connects through the same OAuth sign-in as Claude Connectors — enable the OAuth server on **MCP > Connection**, then add your site's MCP URL as a connector in ChatGPT.
+
 ### Connection guides by client
 
 | Client | Guide |
@@ -42,7 +61,13 @@ Turn any WordPress site into a **Model Context Protocol (MCP) server** so AI age
 
 ---
 
-## ✨ What's New in v2.9.2
+## ✨ What's New in v2.9.3
+
+- 🗂️ **Custom Post Types tool group** — five new tools: list your public custom post types, then list, create, update, and trash their items. Each item is checked against the post type's own permissions (a Contributor can't edit others' items or publish; an Author can't touch types like products that need extra rights). **Off by default.** Contributed by [@dulaj44](https://github.com/dulaj44) in [#43](https://github.com/bilalnaseer/wsp-wordpress-mcp/pull/43).
+- 👋 **About Us page** under MCP, plus **Settings | Connection | About Us** links on the Plugins screen.
+- ✏️ **Plain-language name, description and readme** — "WSP MCP - Free MCP Plugin for WordPress: Connect Claude, ChatGPT & AI Agents".
+
+## v2.9.2
 
 - Minor updates.
 
@@ -99,6 +124,14 @@ Contributed by [@dulaj44](https://github.com/dulaj44) in [#42](https://github.co
 | Switch Theme | write |
 | Read Menus / Menu Items / Menu Locations | read |
 | Create / Delete Menu, Add / Update / Delete Menu Item, Assign Location | write |
+
+### Custom Post Types *(any public custom post type — books, events, portfolio, products…)*
+| Ability | Access |
+|---------|--------|
+| Read Post Types / Read Items | read |
+| Create / Update / Trash Item | write |
+
+> 5 tools, off by default. Each item is checked against its post type's own permissions, so the AI can't edit other people's items or publish unless its user could do that in wp-admin.
 
 ### Yoast SEO *(requires Yoast SEO plugin)*
 | Ability | Access |
@@ -206,7 +239,9 @@ Contributed by [@dulaj44](https://github.com/dulaj44) in [#42](https://github.co
 
 ## 🏢 About WebSensePro
 
-Built by [WebSensePro](https://websensepro.com) — WordPress & Shopify agency from Queens, NY.
+Built by [WebSensePro](https://websensepro.com) — an AI-powered digital media agency delivering web development, WordPress, Shopify, SEO and AI automation for growing businesses, with offices in Denver, CO, Queens Village, NY and Karachi, Pakistan.
+
+**1,200+** projects delivered · **850+** websites launched · **500+** clients worldwide · **120+** AI automations deployed · **10+** years in digital services
 
 - 🏆 [Official Shopify Partner](https://www.shopify.com/partners/directory/partner/websensepro1)
 - 🎥 [140K+ YouTube Subscribers](https://m.youtube.com/websensepro)

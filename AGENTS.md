@@ -30,8 +30,9 @@ These three files give you complete project understanding without touching the c
 
 ## What this plugin is
 
-**Plugin Name:** WSP MCP - AI Agents Connector  
-**Version:** 2.9.2
+**Plugin Name:** WSP MCP - Free MCP Plugin for WordPress: Connect Claude, ChatGPT & AI Agents  
+(must match the `=== … ===` title line in `readme.txt` — Plugin Check flags a mismatch)  
+**Version:** 2.9.3
 **Slug/prefix:** `wsp`  
 **WP option key:** `wsp_mcp_abilities`  
 **Constant prefix:** `WSP_MCP_`
@@ -208,9 +209,11 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
         │   └── native-tools.php ← registers every wsp_execute_* as a native MCP tool
         ├── admin/
         │   ├── promo-cards.php      ← shared sidebar cards + UTM link builder (both admin pages)
+        │   ├── plugin-links.php     ← Settings | Connection | About Us links under the name on the Plugins screen
         │   ├── review-notice.php    ← WP.org review request on the Plugins screen + MCP pages, after first successful tool call
         │   ├── settings-page.php    ← toggle UI (MCP > Settings) — accordion groups + legacy-page redirect
-        │   └── connection-page.php  ← native endpoint + API key + per-client tabs (MCP > Connection)
+        │   ├── connection-page.php  ← native endpoint + API key + per-client tabs (MCP > Connection)
+        │   └── about-page.php       ← static WebSensePro info (MCP > About Us, after Analytics)
         └── abilities/           ← wsp_execute_* logic (called by the native server)
             ├── posts.php  pages.php  taxonomy.php  comments.php  media.php
             ├── users.php  search.php  site.php  menus.php  yoast.php  elementor.php
@@ -225,7 +228,7 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
 
 | Constant | Value |
 |---|---|
-| `WSP_MCP_VERSION` | `'2.9.2'` |
+| `WSP_MCP_VERSION` | `'2.9.3'` |
 | `WSP_MCP_OPTION` | `'wsp_mcp_abilities'` (per-ability on/off toggles) |
 | `WSP_MCP_DIR` | `plugin_dir_path(__FILE__)` |
 
@@ -390,6 +393,27 @@ admin toggle for each is driven by its entry in `wsp_mcp_ability_registry()` (`r
 - `get-site-info` returns: `name`, `url`, `tagline`, `admin_email`, `wp_version`, `language`.
 - `get-plugins` loads `wp-admin/includes/plugin.php` if needed, then intersects all plugins with active list.
 - `deactivate-plugin` refuses to deactivate this plugin itself. Otherwise the MCP connection would cut itself off.
+
+#### Custom Post Types (`cpt.php`) — added v2.9.3 (PR #43)
+
+All OFF by default. Settings-page icon: 🗂️. Every tool takes a `post_type` slug resolved by
+`wsp_cpt_resolve_type()`, which **only accepts public, non-built-in types** (posts/pages/attachments
+and block/template types are refused with `reserved_type` — they have their own tools; internal types
+like `user_request`, orders, form definitions return `not_found`) **and requires the type's own
+`cap->edit_posts`** (e.g. WooCommerce `edit_products`), not just the tool's broad capability.
+
+| Ability key | Label | Access | Tool capability | Inputs |
+|---|---|---|---|---|
+| `wsp/get-post-types` | Read Post Types | read | `edit_posts` | none |
+| `wsp/get-cpt-items` | Read CPT Items | read | `edit_posts` | `post_type`*, `per_page`, `status` (publish\|draft\|pending\|future\|private\|all) |
+| `wsp/create-cpt-item` | Create CPT Item | write | `publish_posts` | `post_type`*, `title`*, `content`, `status` (default draft), `slug` |
+| `wsp/update-cpt-item` | Update CPT Item | write | `edit_posts` | `post_type`*, `id`*, `title`, `content`, `status` |
+| `wsp/delete-cpt-item` | Delete CPT Item | write | `delete_posts` | `post_type`*, `id`* (trash, not permanent) |
+
+- Object-level guards: update → `wsp_mcp_guard_edit_post()` + `wsp_mcp_guard_post_status()`; delete →
+  `wsp_mcp_guard_delete_post()`; create checks the type's `cap->create_posts`, and `cap->publish_posts`
+  for publish/future/private. `get-cpt-items` limits non-published results to the caller's own items
+  unless they hold the type's `cap->edit_others_posts`.
 
 #### Themes (`themes.php`) — added v2.9.1
 
@@ -809,6 +833,22 @@ Only registered if `wsp_uae_is_active()`. Adds 45 tools to manipulate UAE widget
 - Don't make it reappear after "Don't show again", and don't show it to non-admins — both break
   WordPress.org guideline 11.
 
+### Plugins-screen links — `plugin-links.php`
+
+- `wsp_mcp_plugin_action_links()` on `plugin_action_links_<basename>` prepends **Settings | Connection |
+  About Us** before core's Deactivate link. Shown only to `manage_options` users (the pages need it).
+
+### About Us page (`MCP > About Us`) — `about-page.php`
+
+- Submenu slug `wsp-mcp-about`, registered on `admin_menu` priority **40** so it sits directly below
+  Analytics (35). `manage_options` only.
+- Content (agency description, stats, services, values, contact details, social links) is
+  **hard-coded** from websensepro.com — the page makes no runtime HTTP requests. Edit
+  `wsp_mcp_about_page()` when the website's figures change.
+- websensepro.com links go through `wsp_mcp_promo_url()` with campaign `about_page`; social links are
+  plain. All links `target="_blank" rel="noopener"`.
+- Not in `wsp_mcp_review_is_allowed_screen()` — the review notice does not show here.
+
 ### Promo cards — `promo-cards.php` (v2.6.7)
 
 Shared by **both** admin pages; loaded before them in the main plugin file so the functions exist.
@@ -841,7 +881,7 @@ Shared by **both** admin pages; loaded before them in the main plugin file so th
 - MIME types: `sanitize_mime_type($input['type'])`.
 - Permission callbacks: `__return_true` for public reads; `current_user_can('cap')` closures for writes and sensitive reads.
 - MCP requests are authenticated inside the native server handler (App Password / Bearer key); per-tool capability checks via `require_cap()`.
-- **`require_cap()` only checks the ONE broad primitive capability recorded at registration — it cannot answer "may this user act on THIS object?".** Every write callback that accepts a caller-supplied object ID MUST additionally call the object-level guards in `includes/abilities/guard.php`: `wsp_mcp_guard_edit_post($id, $type)` / `wsp_mcp_guard_delete_post($id, $type)` enforce the `edit_post` / `delete_post` meta capability and pin the post type; `wsp_mcp_guard_post_status($post, $status)` blocks `publish`/`future`/`private` transitions unless the caller holds `publish_posts`. All return `WP_Error` on denial. Application Password callers run as their real (possibly Contributor-level) user, so skipping this is a broken-access-control bug (see CHANGELOG `[2.7.1]`, Patchstack). Currently applied in `posts.php`, `pages.php`, `media.php`; `yoast.php` / `rankmath.php` do their own equivalent `edit_post` check.
+- **`require_cap()` only checks the ONE broad primitive capability recorded at registration — it cannot answer "may this user act on THIS object?".** Every write callback that accepts a caller-supplied object ID MUST additionally call the object-level guards in `includes/abilities/guard.php`: `wsp_mcp_guard_edit_post($id, $type)` / `wsp_mcp_guard_delete_post($id, $type)` enforce the `edit_post` / `delete_post` meta capability and pin the post type; `wsp_mcp_guard_post_status($post, $status)` blocks `publish`/`future`/`private` transitions unless the caller holds `publish_posts`. All return `WP_Error` on denial. Application Password callers run as their real (possibly Contributor-level) user, so skipping this is a broken-access-control bug (see CHANGELOG `[2.7.1]`, Patchstack). Currently applied in `posts.php`, `pages.php`, `media.php`, `cpt.php`; `yoast.php` / `rankmath.php` do their own equivalent `edit_post` check.
 - Admin-post actions (e.g. API-key regenerate) are nonce-protected with `wp_nonce_field()` / `check_admin_referer()` and gated by `current_user_can('manage_options')`.
 - Output in admin pages is escaped (`esc_html`/`esc_attr`/`esc_url`/`esc_textarea`/`esc_js`).
 
@@ -891,9 +931,17 @@ Keep business logic in `includes/abilities/*.php`; keep transport wiring in `inc
 - One logical change per PR; update `AGENTS.md`, `CHANGELOG.md`, and `readme.txt` changelog in the same PR.
 - End commit messages with the project's Co-Authored-By trailer when an agent made the change.
 
-**Testing note:** there is **no PHP runtime on the primary dev machine** — PHP cannot be linted or
-run locally. Validate changes by installing the plugin in a real WordPress site and exercising the
-endpoint with MCP Inspector / a connected client. Before release, run **Plugin Check** in WP admin.
+**Testing note:** the primary dev machine has PHP (Homebrew, `/opt/homebrew/bin/php`) and Node, but
+no MySQL or WP-CLI.
+- **Lint:** `find wsp-mcp-ai-agents-connector -name '*.php' -print0 | xargs -0 -n1 php -l`
+- **Run WordPress locally (SQLite, nothing to install):** from the repo root,
+  `npx @wp-playground/cli@latest server --port=9400 --login --mount=./wsp-mcp-ai-agents-connector:/wordpress/wp-content/plugins/wsp-mcp-ai-agents-connector`
+  plus a blueprint with an `activatePlugin` step (`wsp-mcp-ai-agents-connector/wsp-mcp-ai-agents-connector.php`).
+  Login is `admin` / `password`. **Gotcha:** `--login` makes Playground 302-redirect cookieless
+  requests to log in, including REST calls — send the logged-in cookie jar with MCP `curl` tests
+  (Bearer auth still applies), or start without `--login`.
+- Smoke test the endpoint with `initialize` → `tools/list` → `tools/call` (copy the API key from MCP > Connection).
+Before release, still test on a real WordPress site and run **Plugin Check** in WP admin.
 
 **Native-only (since v2.2):** the dual-mode Abilities-API path was removed. The plugin no longer
 calls `wp_register_ability()` and does not reference `mcp-adapter` / `abilities-api` /
