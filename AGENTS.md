@@ -216,7 +216,8 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
         │   └── about-page.php       ← static WebSensePro info (MCP > About Us, after Analytics)
         └── abilities/           ← wsp_execute_* logic (called by the native server)
             ├── posts.php  pages.php  taxonomy.php  comments.php  media.php
-            ├── users.php  search.php  site.php  menus.php  yoast.php  elementor.php
+            ├── users.php  search.php  site.php  menus.php  site-editor.php  widgets.php  health.php  themes.php  theme-upload.php
+            ├── yoast.php  elementor.php
             ├── woocommerce.php  acf.php
 ```
 
@@ -445,6 +446,83 @@ All nine require `edit_theme_options` (the capability WP core's menu editor and 
 - `update-menu-item` reads the current item via `wp_setup_nav_menu_item()` and only overrides the fields supplied; `type`/`object`/`object_id` are preserved.
 - `delete-menu-item` calls `wp_delete_post( $id, true )` (force-delete, no trash).
 - `assign-menu-location` writes the `nav_menu_locations` theme mod directly; unknown location slugs are rejected against `get_registered_nav_menus()`.
+
+#### Site Editor — Global Styles + Templates (`site-editor.php`) — added v2.10.0
+
+All six require `edit_theme_options` (what core's global-styles and templates REST controllers use). Site-wide structures, so no object-level guard. All OFF by default. Not plugin-gated (always registered) — callbacks return `WP_Error( 'not_block_theme' )` at call time when the active theme is classic (templates also accept classic themes with `block-templates` support). Settings-page icon: 🎨. All errors are `WP_Error`, never `success => false` arrays.
+
+| Ability key | Label | Access | Inputs |
+|---|---|---|---|
+| `wsp/get-global-styles` | Read Global Styles | read | `origin` (user\|merged), `include_variations` (bool) |
+| `wsp/update-global-styles` | Update Global Styles | write | `settings` (object), `styles` (object), `variation_slug`, `merge` (bool, default true) — at least one of the first three |
+| `wsp/get-templates` | List Templates | read | `type` (template\|template_part), `area`, `search`, `per_page` (1–100, default 10), `page` |
+| `wsp/get-template` | Read Template | read | `template_id`* (`theme//slug`), `type` |
+| `wsp/create-template` | Create Template | write | `slug`*, `title`, `content`, `description`, `type`, `area` |
+| `wsp/update-template` | Update Template | write | `template_id`*, `type`, `title`, `content`, `description`, `area` |
+
+- **Global styles storage:** the user layer of theme.json lives in the active theme's `wp_global_styles` post (ID from `WP_Theme_JSON_Resolver::get_user_global_styles_post_id()`), JSON with `version` / `isGlobalStylesUserThemeJSON` / `settings` / `styles`. `origin=merged` returns `wp_get_global_settings()` / `wp_get_global_styles()` instead.
+- **Merge semantics** (`wsp_site_editor_merge()`): associative arrays merge key-by-key; lists (palettes, font families) and scalars replace wholesale; `null` deletes the key (falls back to theme). `merge=false` replaces `settings`/`styles` entirely.
+- **Variations:** `wsp_site_editor_style_variations()` wraps `WP_Theme_JSON_Resolver::get_style_variations()`, classifies each as `full` / `color` / `typography`, and assigns unique slugs (partials sharing a full variation's title get `-color`/`-typography`; collisions get `-2`, `-3`, …). Applying a full variation replaces the user layer; a partial merges into it. Applied before `settings`/`styles` input.
+- **Custom CSS guard (do not regress):** `css` keys are stripped from caller `styles` input (`wsp_site_editor_strip_custom_css()`), so MCP can never set custom CSS. The existing top-level `styles.css` (saved by an admin in the Site Editor) is carried over on every write so a replace/full variation doesn't wipe it. `WP_Theme_JSON::remove_insecure_properties()` runs only for users without `unfiltered_html`, matching core — running it for admins drops valid non-preset settings.
+- **Templates:** `type` maps to `wp_template` / `wp_template_part`. Returned rows carry `id, slug, title, description, type, area, status, source, has_theme_file, is_customized` (+ `content` from get/create/update). `create` refuses an existing `theme//slug`. `update` on a theme-file template without a DB copy (`wp_id` empty) inserts the override post, seeded from the theme file for fields not supplied — the same thing the Site Editor does on first save. Template-part `area` is validated against `get_allowed_block_template_part_areas()`.
+- **Terms:** `wp_theme` / `wp_template_part_area` are set with `wp_set_object_terms()`, never `tax_input` — `wp_insert_post()` silently skips `tax_input` unless the user can `assign_terms`, which would leave an orphaned template not tied to any theme.
+- Caller-supplied template `content` goes through `wp_kses_post()` but **not** `wp_unslash()` (see Security patterns); post arrays are `wp_slash()`ed before `wp_insert_post()`/`wp_update_post()` so backslashes in block-comment JSON survive.
+
+#### Widgets & Sidebars (`widgets.php`) — added v2.10.0
+
+All eight require `edit_theme_options` (Appearance > Widgets / core REST widgets controller). All OFF by default. Not plugin-gated — on a block theme (no registered sidebars) every tool returns `WP_Error( 'no_widget_areas' )` pointing at the template tools, except `get-sidebars`, which returns `{ sidebars: [], total: 0, hint }`. Settings-page icon: 🧱.
+
+| Ability key | Label | Access | Inputs |
+|---|---|---|---|
+| `wsp/get-sidebars` | Read Sidebars | read | none — includes `wp_inactive_widgets` with `status: inactive` |
+| `wsp/update-sidebar` | Update Sidebar | write | `sidebar`*, `widgets`* (ordered id list; `[]` empties) |
+| `wsp/get-widget-types` | Read Widget Types | read | none |
+| `wsp/get-widgets` | Read Widgets | read | `sidebar` |
+| `wsp/get-widget` | Read Widget | read | `widget_id`* — adds `rendered` HTML (`wp_render_widget()`) |
+| `wsp/create-widget` | Create Widget | write | `sidebar`*, `id_base`*, `instance`, `position` |
+| `wsp/update-widget` | Update Widget | write | `widget_id`*, `instance`, `sidebar`, `position` (≥1 of the last three) |
+| `wsp/delete-widget` | Delete Widget | write | `widget_id`*, `force` (default false = move to inactive) |
+
+- **Storage:** instances live in option `widget_{id_base}` keyed by number (read/written via `WP_Widget::get_settings()` / `save_settings()`); placement in option `sidebars_widgets` (read with the plugin's own `wsp_widgets_get_sidebars()`, written with `wp_set_sidebars_widgets()`). **Never call core's `wp_get_sidebars_widgets()`** — it is `@access private` and Plugin Check fails it as `Generic.PHP.ForbiddenFunctions.Found`; the helper reads the raw option (drops `array_version`, normalizes lists), which is also the correct input for read-modify-write since core's version applies the runtime `sidebars_widgets` filter. Widget ids are `{id_base}-{number}`, parsed with `wp_parse_widget_id()`.
+- **Writes go through the widget's own `WP_Widget::update( $new, $old )`** so each type sanitizes as in Appearance > Widgets; `update()` returning `false` → `WP_Error( 'rejected' )`. `update-widget` merges `instance` over the stored one first, so omitted keys survive. New instance number = highest existing + 1 (min 2); `_set()` + `_register_one()` register it for the current request so it can be rendered.
+- **`settings_editable` = the type's `show_instance_in_rest` opt-in** (core's REST rule). Non-opted-in and legacy (non-`WP_Widget`) widgets: settings are `null`, create / instance-edit refused with `WP_Error( 'read_only' )`, move/reorder/delete still allowed. Don't relax this — third-party widgets can store API keys in their instance.
+- **Code-insertion guard (do not regress):** `wsp_widgets_sanitize_instance()` runs `wp_kses_post()` over every string in caller `instance` *before* `update()`, regardless of `unfiltered_html` — this is what keeps `custom_html` / `text` / `block` from injecting `<script>`.
+- **Positioning:** `wsp_widgets_place()` removes the id from every sidebar then inserts at the 0-based `position` (null / past end = last). Responses include `{ position, sidebar_widgets }` when `position` was given.
+- **No sidebar create/delete tool** — sidebars come from `register_sidebar()` in theme PHP on every load, so a runtime create/delete can't persist (same reasoning as the dropped ACF delete-options-page tool). `update-sidebar` is the sidebar-level write: listed widgets are pulled in from anywhere, widgets it drops go to `wp_inactive_widgets` (never deleted).
+
+#### Site Health, Cron & Error Log (`health.php`) — added v2.10.0
+
+All OFF by default. Settings-page group **Site Health & Cron**, icon 🩺. Cron and error-log tools additionally call `wsp_health_require_network_admin()` — on multisite only a super admin (`WP_Error( 'forbidden' )` otherwise), because cron and the PHP log are shared network/server-wide.
+
+| Ability key | Label | Access | Capability | Inputs |
+|---|---|---|---|---|
+| `wsp/get-site-health` | Read Site Health | read | `view_site_health_checks` (core meta cap) | `include_async` (bool, default false), `include_info` (bool, default true) |
+| `wsp/get-cron-events` | List Cron Events | read | `manage_options` | `hook` (substring), `limit` (1–500, default 50) |
+| `wsp/get-cron-event` | Inspect Cron Event | read | `manage_options` | `hook`*, `key` |
+| `wsp/run-cron-event` | Run Cron Event | write | `manage_options` | `hook`*, `key` (required if the hook has >1 instance) |
+| `wsp/delete-cron-event` | Unschedule Cron Event | write | `manage_options` | `hook`*, `key`, `all` (bool) |
+| `wsp/get-error-log` | Read Error Log | read | `manage_options` | `lines` (1–1000, default 100), `grep` |
+
+- **Site Health:** `wsp_health_load_admin_includes()` `require_once`s the wp-admin files `WP_Site_Health` / `WP_Debug_Data` need (not loaded on REST requests). Direct tests run via `get_test_{name}` or a callable `test`; async tests (only with `include_async`) run via their `async_direct_test` callback, else land in `skipped`. Every result passes through core's `site_status_test_result` filter, and every test is wrapped in `try/catch (Throwable)` so a broken third-party test becomes `status: error` instead of failing the call. Info drops fields with `private` (core's "Copy site info" set — DB credentials, prefix, paths), skips `wp-paths-sizes`, redacts values, caps 150 fields/section (`info_truncated`).
+- **Cron reads** use `_get_cron_array()` + `wp_get_schedules()`. Each event has a `key` (core's md5 of its args) to address one instance. `has_callback` = `has_action( $hook )`; `false` means orphaned (its plugin is gone).
+- **`run-cron-event`** runs only an **already-scheduled** event: `do_action_ref_array( $hook, $args )` in the MCP request, same as wp-cron.php. One-off events are unscheduled first (as wp-cron.php does); recurring ones keep their next run. Output is captured by unwinding every buffer above the starting `ob_get_level()` (so a callback that leaves a buffer open can't leak into the JSON response), then plain-texted, redacted, capped at 2000 chars. Refused when no callback is attached. A callback that calls `exit`/`die` will still kill the request — unavoidable.
+- **Invariants (do not regress):** (1) **No schedule-new-event tool** — an arbitrary hook + args is a primitive for firing any action. (2) **`delete-cron-event` refuses `wsp_mcp_*` hooks** — they're only re-added in `wsp_mcp_activate` / `wsp_mcp_maybe_upgrade_db`, so removing one silently stops session / audit-log / OAuth cleanup until the next version bump. (3) **Error log reads only** the `error_log` ini path (if a readable file, not `syslog`) or `WP_CONTENT_DIR/debug.log` — never a caller-supplied path. Last ≤2 MB scanned, lines capped at 2000 chars, response capped at 64 KB (oldest dropped, `truncated: true`), path shown relative to `ABSPATH` or as basename only.
+- **Redaction** (`wsp_health_redact()` / `_deep()`): applied to cron args, run output, error-log lines and Site Health Info values — `define()`d keys/salts/secrets, Bearer/Basic tokens, `user:pass@` URL credentials, JWTs, `password=` / `token:` / `api_key=`-style pairs, and opaque tokens ≥40 chars. Error-log `grep` matches *after* redaction, so it can't be used to probe redacted secrets.
+
+#### Theme upload (`theme-upload.php`) — added v2.10.0
+
+Lives in the existing **Themes** settings group (🎨) next to Read Themes / Switch Theme (`themes.php`, v2.9.1). OFF by default. Not plugin-gated. **Keep the handler in `theme-upload.php`, not `themes.php`** — it was first written into `themes.php`, the 2.9.3 merge kept upstream's version of that file, `wsp_execute_upload_theme()` vanished, and every call failed with "tool has no handler" (the `is_callable()` check in `WSP_MCP_Server::do_tools_call()`).
+
+| Ability key | Label | Access | Capability | Inputs |
+|---|---|---|---|---|
+| `wsp/upload-theme` | Upload / Install Theme | write | `install_themes` | exactly one of `files` (+ `slug`*, `binary_files`) \| `data` \| `url`; `overwrite` (bool), `activate` (bool) |
+
+- **Why it exists:** AI-generated themes had no install path — an agent could write theme files but not get them into `wp-content/themes`. `files` (path → text) is the source agents should use; it is zipped server-side under `{slug}/` (`ZipArchive`, fallback to core's bundled `PclZip` with `PCLZIP_ATT_FILE_CONTENT`). `binary_files` (path → base64) covers `screenshot.png` / fonts. `data` = base64 zip, `url` = http(s) zip (`download_url()` → `wp_safe_remote_get()`, so private/loopback hosts are refused).
+- **Install always goes through core's `Theme_Upgrader::install( $zip, [ 'overwrite_package' => $overwrite ] )`** with a `WP_Ajax_Upgrader_Skin` — the Appearance > Themes > Upload code path. Core therefore does the authoritative validation (style.css `Theme Name`, `index.php` or `templates/index.html`, Requires PHP/WP), installs a missing parent from WordPress.org, and handles replace + rollback. Don't hand-roll file writes into the themes directory.
+- **Capability:** `install_themes` — `map_meta_cap()` turns this into `do_not_allow` under `DISALLOW_FILE_MODS` and for non-super-admins on multisite, so both are enforced without extra code (the callback also checks `wp_is_file_mod_allowed()` for a clearer message). `activate=true` additionally needs `switch_themes`; on multisite a non-network-enabled theme is network-enabled only if the caller has `manage_network_themes`. Activation runs `validate_theme_requirements()` then `switch_theme()`; an activation failure is returned as `activation_error` alongside the successful install, not as a tool error.
+- **Path guard (do not regress):** `wsp_theme_normalize_path()` rejects absolute / drive-letter paths, `..`, empty segments, hidden (dot) segments (no `.htaccess`), characters outside `[A-Za-z0-9._-]`, and any extension outside `wsp_theme_text_extensions()` / `wsp_theme_binary_extensions()`. Limits: `WSP_THEME_MAX_FILES` (1000) and `WSP_THEME_MAX_BYTES` (20 MB decoded).
+- **Content is NOT sanitized** — a theme *is* PHP code. This is deliberate and identical to core's upload screen; the safety boundary is the admin-only capability + OFF-by-default toggle. Text content is stored verbatim (no `wp_unslash()`, same reasoning as block markup).
+- Without `overwrite`, an existing slug is refused (`theme_exists` / core's `folder_exists`, both telling the agent about `overwrite`). If `WP_Filesystem()` can't get direct/credentialed access, returns `filesystem_unavailable` instead of an FTP prompt. Upgrader output is buffered and discarded so it can't corrupt the JSON response.
 
 #### Yoast SEO (`yoast.php`)
 
@@ -875,7 +953,7 @@ Shared by **both** admin pages; loaded before them in the main plugin file so th
 ## Security patterns used
 
 - All text input: `sanitize_text_field(wp_unslash($input['x']))`.
-- HTML content: `wp_kses_post(wp_unslash($input['content']))`.
+- HTML content: `wp_kses_post(wp_unslash($input['content']))`. **Exception — block markup** (templates in `site-editor.php`, widget instances in `widgets.php`, since v2.10.0): `wp_kses_post()` only, no `wp_unslash()`. MCP args are decoded JSON and never slashed, so unslashing strips real backslashes and corrupts escaped JSON (`<`) in block-comment attributes. Older modules (posts/pages) still unslash; that's a latent bug for block content with escapes, not a pattern to copy.
 - IDs: `intval($input['id'])`.
 - Slugs: `sanitize_title($input['slug'])`.
 - MIME types: `sanitize_mime_type($input['type'])`.

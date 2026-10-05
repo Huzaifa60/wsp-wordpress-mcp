@@ -8,6 +8,113 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.10.0] — Unreleased
+
+### Added — Site Editor ability group: Global Styles + block templates (`includes/abilities/site-editor.php` — new file)
+
+- Six tools for block (Full Site Editing) themes, modelled on the equivalent Easy MCP AI tools:
+  `wsp_get_global_styles`, `wsp_update_global_styles`, `wsp_get_templates`, `wsp_get_template`,
+  `wsp_create_template`, `wsp_update_template`. All gated by `edit_theme_options` — the capability
+  WP core's own global-styles and templates REST controllers require — and all OFF by default.
+  New settings-page group **Site Editor** (🎨).
+- **Global Styles** read/write the active theme's `wp_global_styles` post (the user layer of
+  theme.json). `wsp_get_global_styles` returns the user customizations (`origin=user`, default) or
+  the merged effective values (`origin=merged`), and with `include_variations=true` lists the
+  theme's style variations with unique slugs and a `full` / `color` / `typography` scope.
+  `wsp_update_global_styles` deep-merges `settings` / `styles` fragments (objects merge, arrays
+  replace, `null` removes a key), or replaces them with `merge=false`, and can apply a variation via
+  `variation_slug` (full replaces, partial merges). Caches are flushed after saving.
+- **Templates** cover both `wp_template` and `wp_template_part` (`type` = `template` |
+  `template_part`), addressed by `theme-slug//slug` IDs. Listing supports `area` / `search` /
+  pagination. Updating a theme-file template that was never customized creates the database
+  override the Site Editor itself creates on first save; `create` refuses existing slugs.
+  Theme/area terms are set with `wp_set_object_terms()` because `wp_insert_post()` silently drops
+  `tax_input` unless the user can assign terms in `wp_theme`.
+- **Code-insertion guards:** `css` keys (custom CSS) are stripped from caller input, so custom CSS
+  cannot be set through MCP (any CSS an admin already saved in the Site Editor is preserved, not
+  wiped); callers without `unfiltered_html` also get `WP_Theme_JSON::remove_insecure_properties()`,
+  matching core. Template content goes through `wp_kses_post()` but is deliberately **not**
+  `wp_unslash()`ed: MCP args are decoded JSON (never slashed), and unslashing would corrupt
+  escaped JSON such as `<` inside block-comment attributes.
+
+### Added — Widgets & Sidebars ability group (`includes/abilities/widgets.php` — new file)
+
+- Eight tools for classic-theme widget areas, modelled on the equivalent Easy MCP AI tools:
+  `wsp_get_sidebars`, `wsp_update_sidebar`, `wsp_get_widget_types`, `wsp_get_widgets`,
+  `wsp_get_widget`, `wsp_create_widget`, `wsp_update_widget`, `wsp_delete_widget`. All gated by
+  `edit_theme_options` (Appearance > Widgets' capability) and OFF by default. New settings-page
+  group **Widgets** (🧱).
+- Works directly on core storage (`widget_{id_base}` options + `sidebars_widgets`) through each
+  widget's own `WP_Widget::update()`, so per-type sanitization runs exactly as in Appearance >
+  Widgets. `wsp_update_widget` merges `instance` over current settings and can move/reorder in the
+  same call; `wsp_delete_widget` moves to `wp_inactive_widgets` by default, `force=true` deletes
+  the instance permanently. `wsp_update_sidebar` sets an area's full contents/order — widgets it
+  drops go to `wp_inactive_widgets`, never deleted.
+- **No sidebar create/delete:** sidebars are registered in theme PHP on every load, so a runtime
+  create/delete couldn't persist (same reason the ACF delete-options-page tool was dropped).
+- **Guards:** only widget types that opt in via `show_instance_in_rest` (core's REST rule — some
+  third-party widgets keep API keys in their instance) can be read or written; others can still be
+  moved or deleted. Every string in a caller-supplied `instance` goes through `wp_kses_post()`
+  before `update()`, so `custom_html` / `text` / `block` widgets can't inject `<script>`, even for
+  admins with `unfiltered_html`. Block themes (no registered areas) get a `no_widget_areas` error
+  pointing at the template tools; `wsp_get_sidebars` returns an empty list with a hint instead.
+- **Plugin Check:** sidebar placement is read with a plugin helper, `wsp_widgets_get_sidebars()`
+  (raw `sidebars_widgets` option), not core's `wp_get_sidebars_widgets()`, which is `@access private`
+  and failed Plugin Check with nine `Generic.PHP.ForbiddenFunctions.Found` errors in `widgets.php`.
+
+### Added — Site Health, Cron & Error Log ability group (`includes/abilities/health.php` — new file)
+
+- Six diagnostics tools, modelled on the equivalent Easy MCP AI tools, all OFF by default. New
+  settings-page group **Site Health & Cron** (🩺).
+- `wsp_get_site_health` (`view_site_health_checks` — core's own meta capability) runs
+  `WP_Site_Health`'s direct tests (and, with `include_async=true`, the slow network tests via their
+  `async_direct_test` callbacks), passing each result through core's `site_status_test_result`
+  filter. Returns counts, tests sorted critical-first, skipped tests with a reason, and the
+  `WP_Debug_Data` Info sections with every core-private field left out (same set as "Copy site
+  info"), directory sizes omitted, secret-shaped values redacted, and 150 fields per section max.
+  Each test runs in its own `try/catch`, so one broken third-party test can't fail the report.
+- Cron: `wsp_get_cron_events` (list, filter, overdue / orphaned flags, registered schedules),
+  `wsp_get_cron_event` (every instance of a hook + the callbacks attached to it),
+  `wsp_run_cron_event` (runs an **existing** event now via `do_action_ref_array()`, like
+  wp-cron.php; captures and redacts output, catches `Throwable`), `wsp_delete_cron_event`
+  (unschedule one instance by `key`, or `all=true`). All `manage_options`, super admin on multisite.
+- `wsp_get_error_log` (`manage_options`, super admin on multisite) tails the last ≤2 MB of the PHP
+  `error_log` ini path or `wp-content/debug.log` — **never a caller-supplied path** — with
+  `lines` / `grep`, secret redaction, 2000-char line cap and a 64 KB response cap.
+- **Deliberately not included:** a "schedule new cron event" tool. Scheduling an arbitrary hook
+  with arbitrary args would let an agent fire any action in WordPress.
+- **Protects this plugin's own crons:** `wsp_delete_cron_event` refuses any `wsp_mcp_*` hook. Those
+  are only re-scheduled on activation / version change (`wsp_mcp_maybe_upgrade_db`), so unscheduling
+  one would silently stop session, audit-log or OAuth-token cleanup until the next upgrade.
+
+### Added — `wsp_upload_theme` (`includes/abilities/theme-upload.php` — new file)
+
+- **Fix during development — "tool has no handler":** the handler was first written into
+  `includes/abilities/themes.php`, which collided with the upstream `themes.php` added in 2.9.1
+  (`wsp_get_themes` / `wsp_switch_theme`). Merging 2.9.3 kept the upstream file, so
+  `wsp_execute_upload_theme()` no longer existed and `WSP_MCP_Server::do_tools_call()`'s
+  `is_callable()` check failed. The handler now lives in its own `theme-upload.php`, loaded right
+  after `themes.php`, and the tool sits in the existing **Themes** settings group beside
+  Read Themes / Switch Theme.
+
+- Installs a theme into `wp-content/themes`. Previously an agent could generate a theme but had no
+  way to get it installed — it had to be zipped and uploaded by hand. Three sources (exactly one):
+  `files` (relative path → text content, plus `slug` and optional base64 `binary_files` for
+  screenshot/fonts — the natural shape for an AI-generated theme; zipped server-side), `data`
+  (base64 .zip) or `url` (http(s) .zip via `download_url()` / `wp_safe_remote_get()`).
+  `overwrite=true` replaces an installed copy; `activate=true` switches to it (needs
+  `switch_themes`). New settings-page group **Themes** (🖌️). OFF by default.
+- Installs through core's `Theme_Upgrader` (the Appearance > Themes > Upload path), so core
+  validates the package, checks PHP/WP requirements, fetches a missing parent theme, and handles
+  replace + rollback.
+- **Guards:** gated by `install_themes` (denied by core under `DISALLOW_FILE_MODS` and for
+  non-super-admins on multisite). File paths are restricted to relative, non-hidden, traversal-free
+  paths with an extension allowlist; 1000 files / 20 MB max. Theme code itself is not filtered — a
+  theme is PHP by definition — so this tool carries the same trust level as core's theme upload
+  screen and should only be enabled for admin-connected clients.
+
+---
+
 ## [2.9.3] — 2026-10-02
 
 ### Added — Custom Post Type tools (PR #43)

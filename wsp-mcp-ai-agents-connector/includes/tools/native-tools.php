@@ -397,6 +397,21 @@ function wsp_mcp_register_native_tools() {
 		'capability'  => 'switch_themes',
 		'enable_key'  => 'wsp/switch-theme',
 	) );
+	WSP_MCP_Server::register_tool( 'wsp_upload_theme', array(
+		'description' => 'Installs a WordPress theme into wp-content/themes — use this to install a theme you generated. Provide EXACTLY ONE source: "files" (recommended for generated themes: an object mapping relative paths to text content, e.g. {"style.css": "/*\nTheme Name: Acme\n...*/", "functions.php": "<?php ...", "templates/index.html": "<!-- wp:... -->"}, plus "slug" for the folder name and optional "binary_files" for base64 images/fonts such as screenshot.png), "data" (a base64 .zip whose root contains the theme folder), or "url" (public http(s) link to a theme .zip). style.css with a "Theme Name:" header is required; a classic theme also needs index.php, a block theme needs templates/index.html; a child theme sets "Template: <parent-slug>" and a missing parent is fetched from WordPress.org. Installs through WordPress core\'s Theme_Upgrader (same as Appearance > Themes > Upload). Existing themes are only replaced with overwrite=true. activate=true switches the site to the theme after install. Returns { slug, name, version, is_block_theme, parent, parent_installed, replaced, activated, active_theme, preview_url } (+ activation_error if install succeeded but activation did not).',
+		'inputSchema' => array( 'type' => 'object', 'properties' => array(
+			'slug'         => array( 'type' => 'string', 'description' => 'Theme folder name (required with "files"): lowercase letters, digits, "-" or "_". Ignored for zips (the zip\'s root folder is used).' ),
+			'files'        => array( 'type' => 'object', 'additionalProperties' => array( 'type' => 'string' ), 'description' => 'Theme files as { "relative/path.ext": "text content" }. Allowed: .php .css .scss .js .mjs .map .json .html .htm .txt .md .svg .xml .pot .po. No "..", absolute or hidden (dot) paths.' ),
+			'binary_files' => array( 'type' => 'object', 'additionalProperties' => array( 'type' => 'string' ), 'description' => 'Binary theme files as { "relative/path.ext": "base64" } — only with "files". Allowed: .png .jpg .jpeg .gif .webp .avif .ico .svg .woff .woff2 .ttf .otf .eot .mo.' ),
+			'data'         => array( 'type' => 'string', 'description' => 'A theme .zip as base64 (data: URI prefix allowed).' ),
+			'url'          => array( 'type' => 'string', 'description' => 'Public http(s) URL of a theme .zip.' ),
+			'overwrite'    => array( 'type' => 'boolean', 'description' => 'Replace an already-installed theme with the same folder name. Default false.' ),
+			'activate'     => array( 'type' => 'boolean', 'description' => 'Activate the theme after installing it (needs switch_themes). Default false.' ),
+		) ),
+		'callback'    => 'wsp_execute_upload_theme',
+		'capability'  => 'install_themes',
+		'enable_key'  => 'wsp/upload-theme',
+	) );
 
 	// ---- Custom Post Types ----
 	WSP_MCP_Server::register_tool( 'wsp_get_post_types', array(
@@ -542,6 +557,221 @@ function wsp_mcp_register_native_tools() {
 		'callback'    => 'wsp_execute_assign_menu_location',
 		'capability'  => 'edit_theme_options',
 		'enable_key'  => 'wsp/assign-menu-location',
+	) );
+
+	// ---- Site Editor: Global Styles + Templates (block themes) ----
+	$tpl_type = array( 'type' => 'string', 'enum' => array( 'template', 'template_part' ), 'description' => '`template` (default — index, single, archive, …) or `template_part` (header, footer, and other reusable areas).' );
+	WSP_MCP_Server::register_tool( 'wsp_get_global_styles', array(
+		'description' => 'Gets the Global Styles (theme.json) settings and styles of the active block theme. origin=user (default) returns only the site\'s Site Editor customizations; origin=merged returns the effective values (core + theme + user). include_variations=true also lists the theme\'s style variations as available_variations: [{ slug, title, scope }] where scope is full | color | typography; pass a slug to wsp_update_global_styles variation_slug to apply it.',
+		'inputSchema' => array( 'type' => 'object', 'properties' => array(
+			'origin'             => array( 'type' => 'string', 'enum' => array( 'user', 'merged' ), 'description' => 'user (default) or merged.' ),
+			'include_variations' => array( 'type' => 'boolean', 'description' => 'Also list the theme\'s style variations. Default false.' ),
+		) ),
+		'callback'    => 'wsp_execute_get_global_styles',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/get-global-styles',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_update_global_styles', array(
+		'description' => 'Updates the site\'s Global Styles (theme.json user layer) for the active block theme. settings/styles use theme.json structure (e.g. styles.color.background, styles.elements.link.color.text, styles.blocks["core/button"].border.radius, settings.color.palette). By default values deep-merge into existing customizations — objects merge key-by-key, arrays (like a palette) replace wholesale, and null removes a key so it falls back to the theme. merge=false replaces settings/styles entirely. variation_slug applies a theme style variation first (full variations replace, color/typography partials merge). Custom CSS (`css` keys) cannot be set through this tool.',
+		'inputSchema' => array( 'type' => 'object', 'properties' => array(
+			'settings'       => array( 'type' => 'object', 'description' => 'theme.json "settings" fragment.' ),
+			'styles'         => array( 'type' => 'object', 'description' => 'theme.json "styles" fragment.' ),
+			'variation_slug' => array( 'type' => 'string', 'description' => 'Style variation slug from wsp_get_global_styles include_variations=true.' ),
+			'merge'          => array( 'type' => 'boolean', 'description' => 'Deep-merge into existing customizations (default true). false replaces.' ),
+		) ),
+		'callback'    => 'wsp_execute_update_global_styles',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/update-global-styles',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_get_templates', array(
+		'description' => 'Lists block templates or template parts of the active theme. Returns { templates: [{ id, slug, title, description, type, area, status, source, has_theme_file, is_customized }], total, total_pages, page, per_page }. IDs are `theme-slug//slug` and are accepted by wsp_get_template / wsp_update_template with the same type.',
+		'inputSchema' => array( 'type' => 'object', 'properties' => array(
+			'type'     => $tpl_type,
+			'area'     => array( 'type' => 'string', 'description' => 'Template parts only: header | footer | uncategorized.' ),
+			'search'   => array( 'type' => 'string', 'description' => 'Case-insensitive match on title, slug, or description.' ),
+			'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'description' => 'Default 10.' ),
+			'page'     => array( 'type' => 'integer', 'description' => 'Default 1.' ),
+		) ),
+		'callback'    => 'wsp_execute_get_templates',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/get-templates',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_get_template', array(
+		'description' => 'Gets one block template or template part by ID (theme-slug//slug) including its full block markup content.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'template_id' ), 'properties' => array(
+			'template_id' => array( 'type' => 'string', 'description' => 'e.g. twentytwentyfive//single' ),
+			'type'        => $tpl_type,
+		) ),
+		'callback'    => 'wsp_execute_get_template',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/get-template',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_create_template', array(
+		'description' => 'Creates a new block template or template part for the active theme. Fails if the slug already exists (use wsp_update_template for that, including to customize a theme-provided template).',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'slug' ), 'properties' => array(
+			'slug'        => array( 'type' => 'string', 'description' => 'e.g. single-product, page-landing, or a template-part name like header-minimal.' ),
+			'title'       => array( 'type' => 'string' ),
+			'content'     => array( 'type' => 'string', 'description' => 'Block markup, e.g. <!-- wp:template-part {"slug":"header"} /-->.' ),
+			'description' => array( 'type' => 'string' ),
+			'type'        => $tpl_type,
+			'area'        => array( 'type' => 'string', 'description' => 'Template parts only: header | footer | uncategorized (default).' ),
+		) ),
+		'callback'    => 'wsp_execute_create_template',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/create-template',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_update_template', array(
+		'description' => 'Updates a block template or template part (title, content, description, and area for template parts). Updating a theme-file template that has not been customized yet creates the same database override the Site Editor creates on first save.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'template_id' ), 'properties' => array(
+			'template_id' => array( 'type' => 'string', 'description' => 'theme-slug//slug' ),
+			'type'        => $tpl_type,
+			'title'       => array( 'type' => 'string' ),
+			'content'     => array( 'type' => 'string', 'description' => 'Full replacement block markup.' ),
+			'description' => array( 'type' => 'string' ),
+			'area'        => array( 'type' => 'string', 'description' => 'Template parts only: header | footer | uncategorized.' ),
+		) ),
+		'callback'    => 'wsp_execute_update_template',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/update-template',
+	) );
+
+	// ---- Widgets & Sidebars (classic themes) ----
+	$widget_id_prop = array( 'type' => 'string', 'description' => 'Widget id, e.g. "block-3", "text-2" (id_base-number), from wsp_get_widgets or wsp_get_sidebars.' );
+	$instance_prop  = array( 'type' => 'object', 'description' => 'Widget settings keyed by setting name (each type defines its own). block: {"content": "<!-- wp:paragraph --><p>Hi</p><!-- /wp:paragraph -->"}; custom_html: {title, content}; text: {title, text, filter}; recent-posts: {title, number, show_date}; search: {title}; categories / archives: {title, count, dropdown}; nav_menu: {title, nav_menu: menu id}. All strings are filtered with wp_kses_post.' );
+	WSP_MCP_Server::register_tool( 'wsp_get_sidebars', array(
+		'description' => 'Lists the widget areas (sidebars, footers, …) of a classic theme with the ordered widget ids in each, plus wp_inactive_widgets (widgets removed from every area but kept). Returns { sidebars: [{ id, name, description, status, widgets }], total }. A block theme has no widget areas: returns an empty list and a hint to use wsp_get_templates (template parts) instead.',
+		'inputSchema' => $obj,
+		'callback'    => 'wsp_execute_get_sidebars',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/get-sidebars',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_update_sidebar', array(
+		'description' => 'Sets the full contents and order of a widget area. `widgets` is the ordered list of widget ids it should contain; listed widgets are moved in from wherever they are, and widgets previously in the area but not listed move to wp_inactive_widgets (settings kept). Pass [] to empty the area. Sidebars themselves are registered by the theme and cannot be created or deleted.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'sidebar', 'widgets' ), 'properties' => array(
+			'sidebar' => array( 'type' => 'string', 'description' => 'Sidebar id from wsp_get_sidebars.' ),
+			'widgets' => array( 'type' => 'array', 'items' => array( 'type' => 'string' ), 'description' => 'Ordered widget ids.' ),
+		) ),
+		'callback'    => 'wsp_execute_update_sidebar',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/update-sidebar',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_get_widget_types', array(
+		'description' => 'Lists registered widget types — the valid id_base values for wsp_create_widget. Returns { widget_types: [{ id, name, description, is_multi, settings_editable }], total }. Only types with settings_editable: true can be created or have their settings changed over MCP.',
+		'inputSchema' => $obj,
+		'callback'    => 'wsp_execute_get_widget_types',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/get-widget-types',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_get_widgets', array(
+		'description' => 'Lists widgets placed in widget areas with their settings, grouped by sidebar in display order. Returns { widgets: [{ id, id_base, sidebar, position, settings_editable, settings }], total }; position is the 0-based index in its sidebar. settings is null for widget types that do not expose them.',
+		'inputSchema' => array( 'type' => 'object', 'properties' => array(
+			'sidebar' => array( 'type' => 'string', 'description' => 'Only this sidebar (id from wsp_get_sidebars, or wp_inactive_widgets). Omit for all.' ),
+		) ),
+		'callback'    => 'wsp_execute_get_widgets',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/get-widgets',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_get_widget', array(
+		'description' => 'Gets one widget with its settings and rendered front-end HTML. Returns { id, id_base, sidebar, settings_editable, settings, rendered }.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'widget_id' ), 'properties' => array(
+			'widget_id' => $widget_id_prop,
+		) ),
+		'callback'    => 'wsp_execute_get_widget',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/get-widget',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_create_widget', array(
+		'description' => 'Creates a widget in a widget area. id_base must be a settings_editable type from wsp_get_widget_types ("block" is recommended for free-form content). position is 0-based; omit (or past the end) to add last.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'sidebar', 'id_base' ), 'properties' => array(
+			'sidebar'  => array( 'type' => 'string', 'description' => 'Sidebar id from wsp_get_sidebars.' ),
+			'id_base'  => array( 'type' => 'string', 'description' => 'Widget type, e.g. block, custom_html, recent-posts.' ),
+			'instance' => $instance_prop,
+			'position' => array( 'type' => 'integer', 'minimum' => 0 ),
+		) ),
+		'callback'    => 'wsp_execute_create_widget',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/create-widget',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_update_widget', array(
+		'description' => 'Updates a widget\'s settings, moves it to another widget area, and/or reorders it. instance is merged over current settings (omitted keys keep their values) — read it first with wsp_get_widget. sidebar moves it (added last unless position is given); position is 0-based within its sidebar. Widgets whose type does not expose settings can be moved but not edited.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'widget_id' ), 'properties' => array(
+			'widget_id' => $widget_id_prop,
+			'instance'  => $instance_prop,
+			'sidebar'   => array( 'type' => 'string', 'description' => 'Move to this sidebar. wp_inactive_widgets takes it off the site but keeps settings.' ),
+			'position'  => array( 'type' => 'integer', 'minimum' => 0 ),
+		) ),
+		'callback'    => 'wsp_execute_update_widget',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/update-widget',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_delete_widget', array(
+		'description' => 'Removes a widget from the site. force=false (default) moves it to wp_inactive_widgets, keeping its settings (wsp_update_widget with a sidebar restores it). force=true deletes the widget and its settings permanently — cannot be undone.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'widget_id' ), 'properties' => array(
+			'widget_id' => $widget_id_prop,
+			'force'     => array( 'type' => 'boolean', 'description' => 'Permanently delete. Default false.' ),
+		) ),
+		'callback'    => 'wsp_execute_delete_widget',
+		'capability'  => 'edit_theme_options',
+		'enable_key'  => 'wsp/delete-widget',
+	) );
+
+	// ---- Site Health, Cron & Error Log ----
+	$cron_target = array(
+		'hook' => array( 'type' => 'string', 'description' => 'Exact hook name, from wsp_get_cron_events.' ),
+		'key'  => array( 'type' => 'string', 'description' => 'Instance key, from wsp_get_cron_events / wsp_get_cron_event. Required only when the hook has several scheduled instances.' ),
+	);
+	WSP_MCP_Server::register_tool( 'wsp_get_site_health', array(
+		'description' => 'Runs WordPress core\'s Site Health tests and returns the Site Health Info data. Returns { counts: { good, recommended, critical }, tests: [{ test, label, status (good | recommended | critical | error), badge, description, actions }] (critical first), skipped: [{ test, label, reason }], info: { <section>: { label, fields: { <name>: { label, value } } } }, info_truncated, info_omitted }. Text is plain. Info leaves out every field core marks private (database credentials, table prefix, paths) and redacts secret-shaped values. include_async=true also runs the slower tests (WordPress.org reachability, loopback, background updates, HTTPS, page cache) — can take several seconds.',
+		'inputSchema' => array( 'type' => 'object', 'properties' => array(
+			'include_async' => array( 'type' => 'boolean', 'description' => 'Also run the slow network tests. Default false.' ),
+			'include_info'  => array( 'type' => 'boolean', 'description' => 'Include Site Health Info (versions, server, database, constants, plugins, themes). Default true.' ),
+		) ),
+		'callback'    => 'wsp_execute_get_site_health',
+		'capability'  => 'view_site_health_checks',
+		'enable_key'  => 'wsp/get-site-health',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_get_cron_events', array(
+		'description' => 'Lists scheduled WP-Cron events, soonest first. Returns { events: [{ hook, key, next_run (ISO 8601 UTC), seconds_until_run (negative when past due), overdue (>1h past due), schedule: { name, interval_seconds, display, registered } or null for one-off, has_callback (false = orphaned, nothing runs), args (secrets redacted) }], total, returned, overdue_count, cron_disabled (DISABLE_WP_CRON), now, schedules: [{ name, interval_seconds, display }] }.',
+		'inputSchema' => array( 'type' => 'object', 'properties' => array(
+			'hook'  => array( 'type' => 'string', 'description' => 'Case-insensitive substring filter on the hook name.' ),
+			'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 500, 'description' => 'Default 50.' ),
+		) ),
+		'callback'    => 'wsp_execute_get_cron_events',
+		'capability'  => 'manage_options',
+		'enable_key'  => 'wsp/get-cron-events',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_get_cron_event', array(
+		'description' => 'Inspects one cron hook: every scheduled instance (or just the one matching key) plus the callbacks attached to the hook (function / Class->method and priority). protected=true marks WSP MCP\'s own maintenance tasks, which cannot be unscheduled.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'hook' ), 'properties' => $cron_target ),
+		'callback'    => 'wsp_execute_get_cron_event',
+		'capability'  => 'manage_options',
+		'enable_key'  => 'wsp/get-cron-event',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_run_cron_event', array(
+		'description' => 'Runs an existing scheduled cron event immediately, in this request, exactly as wp-cron.php would. A recurring event keeps its next scheduled run; a one-off event is consumed (unscheduled). Returns { success, hook, key, duration_ms, recurring, output, error? }. Refused if no callback is attached to the hook. Only events already scheduled can be run — there is no tool to schedule new ones.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'hook' ), 'properties' => $cron_target ),
+		'callback'    => 'wsp_execute_run_cron_event',
+		'capability'  => 'manage_options',
+		'enable_key'  => 'wsp/run-cron-event',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_delete_cron_event', array(
+		'description' => 'Unschedules a cron event: one instance (by hook, plus key when the hook has several) or, with all=true, every instance of the hook. Use it to clear orphaned events (has_callback: false) left by removed plugins. Unscheduling a core or active-plugin task stops that task until its plugin re-schedules it. WSP MCP\'s own wsp_mcp_* tasks are refused.',
+		'inputSchema' => array( 'type' => 'object', 'required' => array( 'hook' ), 'properties' => $cron_target + array(
+			'all' => array( 'type' => 'boolean', 'description' => 'Unschedule every instance of the hook. Default false.' ),
+		) ),
+		'callback'    => 'wsp_execute_delete_cron_event',
+		'capability'  => 'manage_options',
+		'enable_key'  => 'wsp/delete-cron-event',
+	) );
+	WSP_MCP_Server::register_tool( 'wsp_get_error_log', array(
+		'description' => 'Returns the most recent lines of the PHP error log, newest last. Reads ONLY the PHP error_log path (where WP_DEBUG_LOG writes) or, failing that, wp-content/debug.log — never any other file. Secrets are redacted (tokens, passwords, salts, URL credentials, JWTs). Returns { path_source, path, size_bytes, modified, lines, returned, truncated, scanned_bytes }, or { path_source: null, reason } when no readable log exists (with how to enable one).',
+		'inputSchema' => array( 'type' => 'object', 'properties' => array(
+			'lines' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 1000, 'description' => 'How many recent (matching) lines. Default 100.' ),
+			'grep'  => array( 'type' => 'string', 'description' => 'Only lines containing this text (case-insensitive, plain text).' ),
+		) ),
+		'callback'    => 'wsp_execute_get_error_log',
+		'capability'  => 'manage_options',
+		'enable_key'  => 'wsp/get-error-log',
 	) );
 
 	// ---- Yoast SEO (only when Yoast is active) ----

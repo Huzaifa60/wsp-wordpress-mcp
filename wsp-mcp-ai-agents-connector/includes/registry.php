@@ -88,9 +88,9 @@ function wsp_mcp_ability_registry() {
         'wsp/update-permalink-structure' => array( 'label' => 'Update Permalink Structure', 'description' => 'Change the site permalink structure.',                'group' => 'Site', 'access' => 'write', 'default' => false ),
         'wsp/activate-plugin'            => array( 'label' => 'Activate Plugin',            'description' => 'Activate an installed plugin by file path.',          'group' => 'Site', 'access' => 'write', 'default' => false ),
         'wsp/deactivate-plugin'          => array( 'label' => 'Deactivate Plugin',          'description' => 'Deactivate an active plugin by file path.',           'group' => 'Site', 'access' => 'write', 'default' => false ),
-        // THEMES
         'wsp/get-themes'   => array( 'label' => 'Read Themes',  'description' => 'List installed themes and which one is active.', 'group' => 'Themes', 'access' => 'read',  'default' => false ),
         'wsp/switch-theme' => array( 'label' => 'Switch Theme', 'description' => 'Activate a different installed theme.',          'group' => 'Themes', 'access' => 'write', 'default' => false ),
+        'wsp/upload-theme'      => array( 'label' => 'Upload / Install Theme', 'description' => 'Install a theme the AI generated (or a theme .zip) and optionally activate it. Installs PHP code — administrators only.', 'group' => 'Themes', 'access' => 'write', 'default' => false ),
         // CUSTOM POST TYPES
         'wsp/get-post-types' => array( 'label' => 'Read Post Types',  'description' => 'List registered custom post types (excludes built-in Posts/Pages).', 'group' => 'Custom Post Types', 'access' => 'read',  'default' => false ),
         'wsp/get-cpt-items'  => array( 'label' => 'Read CPT Items',   'description' => 'List items of a given custom post type.',                            'group' => 'Custom Post Types', 'access' => 'read',  'default' => false ),
@@ -107,6 +107,29 @@ function wsp_mcp_ability_registry() {
         'wsp/delete-menu-item'     => array( 'label' => 'Delete Menu Item',     'description' => 'Remove an item from a navigation menu.',                             'group' => 'Menus', 'access' => 'write', 'default' => false ),
         'wsp/get-menu-locations'   => array( 'label' => 'Read Menu Locations',  'description' => 'List theme menu locations and which menu is assigned to each.',     'group' => 'Menus', 'access' => 'read',  'default' => false ),
         'wsp/assign-menu-location' => array( 'label' => 'Assign Menu Location', 'description' => 'Assign (or unassign) a navigation menu to a theme location.',       'group' => 'Menus', 'access' => 'write', 'default' => false ),
+        // SITE EDITOR (block themes)
+        'wsp/get-global-styles'    => array( 'label' => 'Read Global Styles',   'description' => 'Read the site\'s Global Styles (theme.json settings and styles), optionally with the theme\'s style variations.', 'group' => 'Site Editor', 'access' => 'read',  'default' => false ),
+        'wsp/update-global-styles' => array( 'label' => 'Update Global Styles', 'description' => 'Change site-wide colors, typography, spacing, and block styles, or apply a theme style variation.',      'group' => 'Site Editor', 'access' => 'write', 'default' => false ),
+        'wsp/get-templates'        => array( 'label' => 'List Templates',       'description' => 'List block templates or template parts (header, footer, …) of the active theme.',                         'group' => 'Site Editor', 'access' => 'read',  'default' => false ),
+        'wsp/get-template'         => array( 'label' => 'Read Template',        'description' => 'Read one block template or template part with its full block markup.',                                   'group' => 'Site Editor', 'access' => 'read',  'default' => false ),
+        'wsp/create-template'      => array( 'label' => 'Create Template',      'description' => 'Create a new block template or template part for the active theme.',                                     'group' => 'Site Editor', 'access' => 'write', 'default' => false ),
+        'wsp/update-template'      => array( 'label' => 'Update Template',      'description' => 'Edit the title, content, or description of a block template or template part.',                          'group' => 'Site Editor', 'access' => 'write', 'default' => false ),
+        // WIDGETS & SIDEBARS (classic themes)
+        'wsp/get-sidebars'     => array( 'label' => 'Read Sidebars',     'description' => 'List widget areas (sidebars, footers) and the widgets in each.',                          'group' => 'Widgets', 'access' => 'read',  'default' => false ),
+        'wsp/update-sidebar'   => array( 'label' => 'Update Sidebar',    'description' => 'Set which widgets a widget area contains and in what order, or empty it.',               'group' => 'Widgets', 'access' => 'write', 'default' => false ),
+        'wsp/get-widget-types' => array( 'label' => 'Read Widget Types', 'description' => 'List the widget types available on the site.',                                            'group' => 'Widgets', 'access' => 'read',  'default' => false ),
+        'wsp/get-widgets'      => array( 'label' => 'Read Widgets',      'description' => 'List placed widgets with their settings.',                                                 'group' => 'Widgets', 'access' => 'read',  'default' => false ),
+        'wsp/get-widget'       => array( 'label' => 'Read Widget',       'description' => 'Read one widget with its settings and rendered HTML.',                                     'group' => 'Widgets', 'access' => 'read',  'default' => false ),
+        'wsp/create-widget'    => array( 'label' => 'Create Widget',     'description' => 'Add a new widget to a sidebar or footer area.',                                            'group' => 'Widgets', 'access' => 'write', 'default' => false ),
+        'wsp/update-widget'    => array( 'label' => 'Update Widget',     'description' => "Change a widget's settings, move it to another area, or reorder it.",                     'group' => 'Widgets', 'access' => 'write', 'default' => false ),
+        'wsp/delete-widget'    => array( 'label' => 'Delete Widget',     'description' => 'Remove a widget (move to inactive, or delete permanently).',                               'group' => 'Widgets', 'access' => 'write', 'default' => false ),
+        // SITE HEALTH, CRON & ERROR LOG
+        'wsp/get-site-health'   => array( 'label' => 'Read Site Health',  'description' => 'Run Site Health checks: status, performance and security recommendations, plus server/WordPress info.', 'group' => 'Site Health & Cron', 'access' => 'read',  'default' => false ),
+        'wsp/get-cron-events'   => array( 'label' => 'List Cron Events',  'description' => 'List scheduled background tasks (WP-Cron) with next run time and overdue status.',                   'group' => 'Site Health & Cron', 'access' => 'read',  'default' => false ),
+        'wsp/get-cron-event'    => array( 'label' => 'Inspect Cron Event', 'description' => 'Show every instance of one scheduled task and the code attached to it.',                           'group' => 'Site Health & Cron', 'access' => 'read',  'default' => false ),
+        'wsp/run-cron-event'    => array( 'label' => 'Run Cron Event',    'description' => 'Run an existing scheduled task immediately.',                                                       'group' => 'Site Health & Cron', 'access' => 'write', 'default' => false ),
+        'wsp/delete-cron-event' => array( 'label' => 'Unschedule Cron Event', 'description' => 'Remove a scheduled task (e.g. orphaned tasks left by deleted plugins).',                         'group' => 'Site Health & Cron', 'access' => 'write', 'default' => false ),
+        'wsp/get-error-log'     => array( 'label' => 'Read Error Log',    'description' => 'Read recent PHP / WordPress debug log lines, with secrets redacted.',                                'group' => 'Site Health & Cron', 'access' => 'read',  'default' => false ),
     );
 
     if ( wsp_yoast_is_active() ) {
