@@ -4,7 +4,7 @@
 
 > **By [WebSensePro](https://websensepro.com) — Official Shopify Partner & WordPress Agency**
 
-[![Version](https://img.shields.io/badge/Version-2.9.3-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
+[![Version](https://img.shields.io/badge/Version-2.9.4-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
 [![YouTube](https://img.shields.io/badge/YouTube-140K%2B%20Subscribers-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/websensepro)
 [![License](https://img.shields.io/badge/License-GPL%202.0-green?style=for-the-badge)](LICENSE)
 
@@ -17,7 +17,7 @@ WSP MCP is a **free MCP plugin for WordPress**. Install it, connect your AI app,
 
 **Why WSP MCP?**
 
-- 💸 **100% free** — every feature and all 190+ tools, no paid version.
+- 💸 **100% free** — every feature and all 200+ tools, no paid version.
 - 🔌 **Everything built in** — no companion plugin, MCP Adapter, or account needed.
 - 🤖 **Works with your AI app** — Claude (web, desktop, mobile), ChatGPT, Cursor, Codex, Google Antigravity, OpenClaw, OpenCode, and any other MCP client.
 - 🛡️ **Safe by default** — every tool has its own on/off switch, anything that changes your site is off until you turn it on, and the AI can only do what its WordPress user is allowed to do.
@@ -61,7 +61,15 @@ WSP MCP is a **free MCP plugin for WordPress**. Install it, connect your AI app,
 
 ---
 
-## ✨ What's New in v2.9.3
+## ✨ What's New in v2.9.4
+
+- 🎨 **Site Editor tool group** — six tools for block themes: read and update Global Styles (colors, typography, spacing, style variations) and list, read, create and update block templates and template parts.
+- 🧱 **Widgets & Sidebars tool group** — eight tools for classic themes: list widget areas and types, and read, create, update, move and delete widgets.
+- 🩺 **Site Health, Cron & Error Log tool group** — six diagnostics tools: run Site Health checks, list/inspect/run/unschedule WP-Cron events, and read recent PHP/WordPress error-log lines (secrets redacted).
+- 📦 **Upload / Install Theme** — install a theme your AI generated (or a theme .zip) and optionally activate it. Administrators only.
+- All new tools are **off by default** — enable them in MCP > Settings. The plugin now ships **200+ tools**.
+
+## v2.9.3
 
 - 🗂️ **Custom Post Types tool group** — five new tools: list your public custom post types, then list, create, update, and trash their items. Each item is checked against the post type's own permissions (a Contributor can't edit others' items or publish; an Author can't touch types like products that need extra rights). **Off by default.** Contributed by [@dulaj44](https://github.com/dulaj44) in [#43](https://github.com/bilalnaseer/wsp-wordpress-mcp/pull/43).
 - 👋 **About Us page** under MCP, plus **Settings | Connection | About Us** links on the Plugins screen.

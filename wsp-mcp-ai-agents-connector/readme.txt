@@ -4,11 +4,11 @@ Tags: mcp, ai, claude, chatgpt, ai agent
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.9.3
+Stable tag: 2.9.4
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Free MCP plugin for WordPress. Connect Claude, ChatGPT, Cursor or any AI agent and manage your site by chat. 190+ tools, no coding needed.
+Free MCP plugin for WordPress. Connect Claude, ChatGPT, Cursor or any AI agent and manage your site by chat. 200+ tools, no coding needed.
 
 == Description ==
 
@@ -42,7 +42,7 @@ MCP (Model Context Protocol) is the standard way AI assistants connect to other 
 * **Usage dashboard.** See how often the AI is used, which tools are most popular, and how fast they respond.
 * **Your data stays on your site.** Logs and stats are stored in your own database, never sent anywhere.
 
-= What your AI can do (190+ tools) =
+= What your AI can do (200+ tools) =
 
 **WordPress basics**
 
@@ -121,7 +121,7 @@ https://youtu.be/hxhjs3IUYQE
 
 == Changelog ==
 
-= 2.10.0 =
+= 2.9.4 =
 * New: Site Editor ability group for block (Full Site Editing) themes — six tools. Read Global Styles (`wsp_get_global_styles`) returns the site's theme.json customizations or the merged effective values, and can list the theme's style variations. Update Global Styles (`wsp_update_global_styles`) deep-merges new colors, typography, spacing and block styles, or applies a style variation. List / Read / Create / Update Template (`wsp_get_templates`, `wsp_get_template`, `wsp_create_template`, `wsp_update_template`) manage block templates and template parts (header, footer, …). All require `edit_theme_options` and are OFF by default. Custom CSS cannot be set through these tools, and template content is filtered with `wp_kses_post()`.
 * New: Widgets & Sidebars ability group for classic themes — eight tools. Read Sidebars, Read Widget Types, Read Widgets and Read Widget list widget areas, available widget types, placed widgets with their settings, and a single widget with its rendered HTML. Create Widget, Update Widget (change settings, move between areas, reorder) and Delete Widget (move to Inactive Widgets, or delete permanently) manage individual widgets; Update Sidebar sets which widgets an area holds and in what order. All require `edit_theme_options` and are OFF by default. Widget text is filtered with `wp_kses_post()`.
 * New: Site Health, Cron & Error Log ability group — six diagnostics tools. Read Site Health runs WordPress's Site Health checks and returns status, performance and security recommendations plus server and WordPress info (private fields such as database credentials are left out). List / Inspect / Run / Unschedule Cron Event manage existing scheduled background tasks; new tasks cannot be scheduled, and WSP MCP's own maintenance tasks cannot be removed. Read Error Log returns recent lines of the PHP / WordPress debug log with secrets redacted, and only ever reads that log file. Administrator-only (super admin on multisite) and OFF by default.
@@ -252,7 +252,7 @@ https://youtu.be/hxhjs3IUYQE
 
 == Upgrade Notice ==
 
-= 2.10.0 =
+= 2.9.4 =
 Adds a Site Editor tool group (Global Styles + block templates, 6 tools) for block themes , a Widgets & Sidebars tool group (8 tools) for classic themes, a Site Health, Cron & Error Log tool group (6 tools), and an Upload / Install Theme tool for AI-generated themes. All new tools are OFF by default — enable them from MCP > Settings if you want them.
 
 = 2.9.3 =

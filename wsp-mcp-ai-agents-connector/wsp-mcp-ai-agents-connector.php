@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: WSP MCP - Free MCP Plugin for WordPress: Connect Claude, ChatGPT & AI Agents
- * Description: Connect Claude, ChatGPT, Cursor & any AI agent to WordPress. Manage posts, pages, media, SEO, WooCommerce, Elementor & more by chat — 190+ tools, you choose which are on. Free.
- * Version: 2.9.3
+ * Description: Connect Claude, ChatGPT, Cursor & any AI agent to WordPress. Manage posts, pages, media, SEO, WooCommerce, Elementor & more by chat — 200+ tools, you choose which are on. Free.
+ * Version: 2.9.4
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: WebSensePro
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'WSP_MCP_VERSION', '2.9.3' );
+define( 'WSP_MCP_VERSION', '2.9.4' );
 define( 'WSP_MCP_OPTION', 'wsp_mcp_abilities' );
 define( 'WSP_MCP_DIR', plugin_dir_path( __FILE__ ) );
 

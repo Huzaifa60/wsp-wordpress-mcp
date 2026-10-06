@@ -79,8 +79,8 @@ function wsp_mcp_render_promo_cards( $campaign ) {
 
         <div class="wsp-promo">
             <div class="wsp-promo-icon">&#129520;</div>
-            <h2>190+ Tools Available</h2>
-            <p>This plugin ships over 190 MCP tools across WordPress core and popular plugins. Browse the full list in our abilities directory.</p>
+            <h2>200+ Tools Available</h2>
+            <p>This plugin ships over 200 MCP tools across WordPress core and popular plugins. Browse the full list in our abilities directory.</p>
             <a class="button button-secondary"
                 href="<?php echo esc_url( wsp_mcp_promo_url( 'https://wspmcp.com/abilities-directory', 'directory_card', $campaign ) ); ?>"
                 target="_blank"
