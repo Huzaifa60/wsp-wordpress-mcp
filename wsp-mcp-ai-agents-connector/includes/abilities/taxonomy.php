@@ -14,9 +14,19 @@ function wsp_execute_create_category( $input ) {
     $args = array();
     if ( ! empty( $input['description'] ) ) $args['description'] = sanitize_text_field( wp_unslash( $input['description'] ) );
     if ( ! empty( $input['parent'] ) )      $args['parent']      = intval( $input['parent'] );
-    $result = wp_insert_term( sanitize_text_field( wp_unslash( $input['name'] ) ), 'category', $args );
+    $taxonomy = isset( $input['taxonomy'] ) ? sanitize_key( $input['taxonomy'] ) : 'category';
+    if ( ! in_array( $taxonomy, array( 'category', 'product_cat' ), true ) || ! taxonomy_exists( $taxonomy ) ) {
+        return array( 'success' => false, 'error' => 'taxonomy must be "category" or "product_cat" (WooCommerce).' );
+    }
+    if ( ! current_user_can( get_taxonomy( $taxonomy )->cap->manage_terms ) ) {
+        return array( 'success' => false, 'error' => 'You do not have permission to create terms in ' . $taxonomy . '.' );
+    }
+    if ( ! empty( $args['parent'] ) && ! term_exists( $args['parent'], $taxonomy ) ) {
+        return array( 'success' => false, 'error' => 'Parent term not found in ' . $taxonomy . '.' );
+    }
+    $result = wp_insert_term( sanitize_text_field( wp_unslash( $input['name'] ) ), $taxonomy, $args );
     if ( is_wp_error( $result ) ) return array( 'success' => false, 'error' => $result->get_error_message() );
-    return array( 'success' => true, 'id' => $result['term_id'], 'name' => sanitize_text_field( wp_unslash( $input['name'] ) ) );
+    return array( 'success' => true, 'id' => $result['term_id'], 'name' => sanitize_text_field( wp_unslash( $input['name'] ) ), 'taxonomy' => $taxonomy );
 }
 
 function wsp_execute_get_tags( $input ) {

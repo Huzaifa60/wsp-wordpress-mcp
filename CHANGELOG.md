@@ -11,6 +11,33 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] — targets 2.9.5
+
+### Fixed — shipping zone `locations` were never saved
+
+- `wsp_woo_create_shipping_zone` and `wsp_woo_update_shipping_zone` returned `locations: []` and persisted nothing. Cause: they PUT `{"locations":[…]}` to the WooCommerce REST locations endpoint, which reads the raw JSON body as the list itself, so the wrapped payload was ignored. Locations now go through `WC_Shipping_Zone` (`clear_locations()` + `add_location()` + `save()`) after the zone has an ID, and the response (and `wsp_woo_get_shipping_zones`) re-reads the saved locations from the zone. Update replaces the list; `[]` clears it. Accepted forms unchanged: `"US"`, `"US:CA"`, `"postcode:90210"`, `"continent:EU"`, or `{code,type}`.
+
+### Fixed / Added — WooCommerce settings size, `_links` noise, tag + shipping-zone tools
+
+- **`wsp_woo_get_settings` no longer returns ~170,000 characters for `general`.** Select/multiselect `options` (every country, state, currency) are omitted by default; each such setting reports `options_count` instead. New params: `include_options` (bool, default false), `setting_id` (string) and `setting_ids` (array) to return only those settings — with `include_options=true` that returns options for just those settings. Every setting's `value` is always returned. Hard limit: if the response would exceed 50,000 characters with options, they are dropped and `truncated_options: true` (plus a `note`) is returned. Secrets stay masked. Unknown `setting_id`s are listed in `not_found` (error if none match).
+- **`_links` / `_embedded` removed from every `wsp_woo_*` response**: stripped centrally in `wsp_woo_rest()`, so tax classes/rates, shipping zones and methods, payment gateways, categories, tags and attributes are all clean. `wsp_woo_get_tax_classes` now returns only `slug` and `name` per class, and rates as `id, country, state, postcode, city, rate, name, priority, compound, shipping, class`.
+- **New tools:** `wsp_woo_update_product_tag` (name, slug, description); `wsp_woo_update_shipping_zone` (name, order, `locations` as `{code,type}` — provided locations **replace** the list, `[]` clears; zone 0 refused); `wsp_woo_delete_shipping_zone` (permanent; also removes the zone's methods and returns the zone name and `removed_methods`; zone 0 refused with a clear error).
+- Checklist additions: `docs/TESTING-woo-plugin-tools.md` → "Settings size / cleanup / zones".
+
+### Added — WooCommerce store management + plugin management (35 new tools; `woocommerce-catalog.php`, `woocommerce-store.php`, `plugins.php`, `tools/admin-tool-defs.php` — new files)
+
+- **Delete tools** (`wsp_woo_delete_product` / `_variation` / `_coupon` / `_category` / `_tag`): products, variations and coupons default to **trash**; `force=true` deletes permanently. Terms (category/tag) and the other `delete_*` tools below have no trash in WordPress/WooCommerce, so they **require `force=true`** and refuse otherwise. All return `id`, `name`, `trashed`, `permanent`.
+- **Taxonomies & attributes:** `wsp_woo_get_product_categories` / `create_` / `update_product_category` (name, slug, parent, description, image_id), `wsp_woo_get_product_tags` / `create_product_tag`, `wsp_woo_get_attributes` / `create_` / `update_` / `delete_attribute`, `wsp_woo_get_attribute_terms` / `create_` / `delete_attribute_term`.
+- **`wsp_woo_create_product` / `wsp_woo_update_product`** now accept `categories` (term IDs), `tags` (term IDs) and `attributes` for any product type — custom (`name` + `options`) or global (`attribute_id` / `taxonomy` + term names; missing terms are created), with `visible` and `variation` flags (`variation` defaults to true for variable products, false otherwise). Unknown term IDs are rejected before anything is saved. Previously attributes were variable-only and always variation-flagged.
+- **`wsp_create_category`** gained a `taxonomy` param (`category` default, or `product_cat`); the taxonomy's own `manage_terms` capability is checked.
+- **Settings / tax / shipping / gateways:** `wsp_woo_get_settings` / `update_settings` (groups general, products, tax, shipping, checkout, account, email), `wsp_woo_get_tax_classes` / `create_` / `update_` / `delete_tax_rate`, `wsp_woo_get_shipping_zones` / `create_shipping_zone` / `get_shipping_methods` / `add_` / `update_` / `delete_shipping_method`, `wsp_woo_get_payment_gateways` / `update_payment_gateway`. All go through WooCommerce's own `wc/v3` REST controllers via `rest_do_request()`, so validation and sanitization are WooCommerce's. Settings and gateway tools need `manage_options`; the rest `manage_woocommerce`.
+- **Secrets are never returned:** password-type fields and ids matching secret/token/key/webhook patterns are masked (`********`) in every response, and a masked value sent back in an update is ignored rather than written.
+- **Plugins:** `wsp_install_plugin` (wordpress.org slug, optional `activate`), `wsp_install_plugin_from_url` (https only), `wsp_delete_plugin` (must be deactivated; refuses this plugin), `wsp_update_plugin`. Core `Plugin_Upgrader` + `WP_Ajax_Upgrader_Skin`; capabilities `install_plugins` / `delete_plugins` / `update_plugins`; `DISALLOW_FILE_MODS` and filesystem-credential cases return a clear error. `wsp_get_plugins` now lists **all** installed plugins (`plugins`) with `active`, `update_available`, `new_version`; `active_plugins` / `total` keep their old meaning.
+- New tools return `{ success, data, error }`; WooCommerce-missing and capability failures come back in that envelope. All new tools are OFF by default; Woo tools register only when WooCommerce is active. One table (`admin-tool-defs.php`) drives both MCP registration and the admin-toggle registry.
+- Test checklist: `docs/TESTING-woo-plugin-tools.md`.
+
+---
+
 ## [2.9.4] — 2026-10-06
 
 ### Changed — version bump and tool count

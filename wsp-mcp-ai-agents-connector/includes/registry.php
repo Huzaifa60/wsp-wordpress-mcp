@@ -148,6 +148,9 @@ function wsp_mcp_ability_registry() {
         );
     }
 
+    // v2.9.5: install / install-from-url / delete / update plugin (table: tools/admin-tool-defs.php)
+    $abilities += wsp_mcp_defs_registry_rows( wsp_mcp_plugin_admin_tool_defs(), 'Site' );
+
     if ( class_exists( 'WooCommerce' ) ) {
         $abilities += array(
             // WOOCOMMERCE
@@ -167,6 +170,8 @@ function wsp_mcp_ability_registry() {
             'wsp/woo-get-low-stock'       => array( 'label' => 'Get Low Stock Alerts',        'description' => 'Inspect and list products running low on stock.',    'group' => 'WooCommerce', 'access' => 'read',  'default' => false ),
             'wsp/woo-moderate-review'     => array( 'label' => 'Moderate Product Reviews',    'description' => 'Approve, spam, trash, or reply to product reviews.',  'group' => 'WooCommerce', 'access' => 'write', 'default' => false ),
         );
+        // v2.9.5: delete / categories / tags / attributes / settings / tax / shipping / gateways (table: tools/admin-tool-defs.php)
+        $abilities += wsp_mcp_defs_registry_rows( wsp_mcp_woo_admin_tool_defs(), 'WooCommerce' );
     }
 
     if ( wsp_elementor_is_active() ) {

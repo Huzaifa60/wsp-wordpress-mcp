@@ -16,20 +16,26 @@ function wsp_execute_get_plugins( $input ) {
     if ( ! function_exists( 'get_plugins' ) ) {
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
     }
-    $all    = get_plugins();
-    $active = get_option( 'active_plugins', array() );
-    $result = array();
-    foreach ( $active as $file ) {
-        if ( isset( $all[ $file ] ) ) {
-            $result[] = array(
-                'name'    => $all[ $file ]['Name'],
-                'version' => $all[ $file ]['Version'],
-                'author'  => $all[ $file ]['Author'],
-                'file'    => $file,
-            );
-        }
+    $all     = get_plugins();
+    $updates = get_site_transient( 'update_plugins' );
+    $result  = array();
+    $active  = array();
+    foreach ( $all as $file => $info ) {
+        $is_active = is_plugin_active( $file ) || is_plugin_active_for_network( $file );
+        $new       = ( is_object( $updates ) && isset( $updates->response[ $file ] ) ) ? $updates->response[ $file ] : null;
+        $row = array(
+            'name'             => $info['Name'],
+            'version'          => $info['Version'],
+            'author'           => $info['Author'],
+            'file'             => $file,
+            'active'           => $is_active,
+            'update_available' => (bool) $new,
+            'new_version'      => $new && isset( $new->new_version ) ? $new->new_version : null,
+        );
+        $result[] = $row;
+        if ( $is_active ) $active[] = $row;
     }
-    return array( 'active_plugins' => $result, 'total' => count( $result ) );
+    return array( 'active_plugins' => $active, 'plugins' => $result, 'total' => count( $active ), 'total_installed' => count( $result ) );
 }
 
 function wsp_execute_update_site_info( $input ) {

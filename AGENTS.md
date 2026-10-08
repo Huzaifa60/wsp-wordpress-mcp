@@ -209,7 +209,8 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
         │   ├── class-session-store.php  ← DB-backed sessions
         │   └── class-auth.php           ← API key + App Password + bearer + caps
         ├── tools/
-        │   └── native-tools.php ← registers every wsp_execute_* as a native MCP tool
+        │   ├── native-tools.php ← registers every wsp_execute_* as a native MCP tool
+        │   └── admin-tool-defs.php ← table of v2.9.5 Woo-store + plugin tools (registry + MCP registration)
         ├── admin/
         │   ├── promo-cards.php      ← shared sidebar cards + UTM link builder (both admin pages)
         │   ├── plugin-links.php     ← Settings | Connection | About Us links under the name on the Plugins screen
@@ -221,7 +222,7 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
             ├── posts.php  pages.php  taxonomy.php  comments.php  media.php
             ├── users.php  search.php  site.php  menus.php  site-editor.php  widgets.php  health.php  themes.php  theme-upload.php
             ├── yoast.php  elementor.php
-            ├── woocommerce.php  acf.php
+            ├── woocommerce.php  woocommerce-catalog.php  woocommerce-store.php  plugins.php  acf.php
 ```
 
 **Rule:** The main file is a minimal loader (+ activation/migration glue) only. All feature logic lives in `includes/`. Never put feature code in `wsp-mcp-ai-agents-connector.php`.
@@ -526,6 +527,20 @@ Lives in the existing **Themes** settings group (🎨) next to Read Themes / Swi
 - **Path guard (do not regress):** `wsp_theme_normalize_path()` rejects absolute / drive-letter paths, `..`, empty segments, hidden (dot) segments (no `.htaccess`), characters outside `[A-Za-z0-9._-]`, and any extension outside `wsp_theme_text_extensions()` / `wsp_theme_binary_extensions()`. Limits: `WSP_THEME_MAX_FILES` (1000) and `WSP_THEME_MAX_BYTES` (20 MB decoded).
 - **Content is NOT sanitized** — a theme *is* PHP code. This is deliberate and identical to core's upload screen; the safety boundary is the admin-only capability + OFF-by-default toggle. Text content is stored verbatim (no `wp_unslash()`, same reasoning as block markup).
 - Without `overwrite`, an existing slug is refused (`theme_exists` / core's `folder_exists`, both telling the agent about `overwrite`). If `WP_Filesystem()` can't get direct/credentialed access, returns `filesystem_unavailable` instead of an FTP prompt. Upgrader output is buffered and discarded so it can't corrupt the JSON response.
+
+#### WooCommerce store management (`woocommerce-catalog.php`, `woocommerce-store.php`) — added v2.9.5
+
+Registered from the table in `includes/tools/admin-tool-defs.php` (`wsp_mcp_woo_admin_tool_defs()`), which feeds **both** `wsp_mcp_register_defs()` (MCP) and `wsp_mcp_defs_registry_rows()` (registry) — add a tool by adding a row there plus a `wsp_execute_<name>()` callback. All OFF by default, Woo-gated, group **WooCommerce**. Envelope `{ success, data, error }` (`wsp_woo_ok()` / `wsp_woo_fail()`); `wsp_woo_guard( $cap )` checks WooCommerce-active + capability. WooCommerce is driven through `wsp_woo_rest()` (internal `wc/v3` `rest_do_request()`) or CRUD classes — never raw SQL.
+
+- **Delete** (`manage_woocommerce`): `wsp_woo_delete_product|variation|coupon` default to trash, `force=true` = permanent. `delete_category|tag|attribute|attribute_term|tax_rate|shipping_method` have no trash → **require `force=true`**.
+- **Catalog:** `wsp_woo_get|create|update_product_category`, `get|create_product_tag`, `get|create|update|delete_attribute`, `get|create|delete_attribute_term`. `wsp_woo_create_product`/`update_product` accept `categories`/`tags` (term IDs, validated) and `attributes` via `wsp_woo_build_attributes()` (custom or global; `variation` defaults true only for variable products). `wsp_create_category` takes `taxonomy` (`category`|`product_cat`).
+- **Store (`manage_options` for settings + gateways, else `manage_woocommerce`):** `wsp_woo_get|update_settings` (groups general/products/tax/shipping/checkout/account/email; one REST PUT per option, unknown ids reported), tax (`get_tax_classes`, `create|update|delete_tax_rate`), shipping (`get_shipping_zones`, `create_shipping_zone`, `get_shipping_methods`, `add|update|delete_shipping_method`), `wsp_woo_get_payment_gateways`/`update_payment_gateway`.
+- **Response hygiene (do not regress):** `wsp_woo_rest()` strips `_links`/`_embedded` from all data (`wsp_woo_strip_links()`). `wsp_woo_get_settings` omits select `options` by default (`options_count` shown); `include_options`, `setting_id`/`setting_ids` opt in, and `WSP_WOO_SETTINGS_MAX_CHARS` (50,000) drops options with `truncated_options:true`. Values are never dropped. Shipping zone 0 can't be edited or deleted; `update_shipping_zone` `locations` replaces the list; `delete_shipping_zone` also removes the zone's methods (no `force` param by design).
+- **Secret masking (do not regress):** `wsp_woo_is_secret_field()` masks password-type and key/secret/token/webhook-named values as `WSP_WOO_SECRET_MASK` in every response; a masked value passed back in an update is skipped, never written.
+
+#### Plugin management (`plugins.php`) — added v2.9.5
+
+Table in `admin-tool-defs.php` (`wsp_mcp_plugin_admin_tool_defs()`), group **Site**, OFF by default, envelope as above. `wsp_install_plugin` (slug → `plugins_api()`), `wsp_install_plugin_from_url` (https only, no URL credentials, `wp_http_validate_url()`), `wsp_delete_plugin` (must be inactive; refuses this plugin), `wsp_update_plugin`. Caps `install_plugins` / `delete_plugins` / `update_plugins`; `wsp_plugins_guard()` also checks `wp_is_file_mod_allowed()` and `WP_Filesystem()`. Core `Plugin_Upgrader` + `WP_Ajax_Upgrader_Skin`, output buffered. Plugin code is not sanitized (it is PHP) — the boundary is the capability + OFF toggle, same as `wsp_upload_theme`. `wsp_get_plugins` returns `plugins` (all, with `active`/`update_available`/`new_version`) plus the legacy `active_plugins`/`total`.
 
 #### Yoast SEO (`yoast.php`)
 

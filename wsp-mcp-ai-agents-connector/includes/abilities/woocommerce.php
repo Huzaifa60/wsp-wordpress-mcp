@@ -140,11 +140,16 @@ function wsp_execute_woo_create_product( $input ) {
             $p->set_manage_stock( true );
             $p->set_stock_quantity( intval( $input['stock_qty'] ) );
         }
-    } else {
-        if ( ! empty( $input['attributes'] ) ) {
-            wsp_woo_set_product_attributes( $p, $input['attributes'] );
-        }
     }
+
+    if ( ! empty( $input['attributes'] ) ) {
+        $attrs = wsp_woo_build_attributes( $input['attributes'], 'variable' === $type );
+        if ( is_string( $attrs ) ) return array( 'success' => false, 'error' => $attrs );
+        $p->set_attributes( $attrs );
+    }
+
+    $terms_err = wsp_woo_apply_product_terms( $p, $input );
+    if ( $terms_err ) return array( 'success' => false, 'error' => $terms_err );
 
     if ( ! empty( $sku ) ) {
         $p->set_sku( $sku );
@@ -170,6 +175,8 @@ function wsp_execute_woo_create_product( $input ) {
         'type'      => $type,
         'price'     => $p->get_price(),
         'image_id'  => $image_id,
+        'categories' => $p->get_category_ids(),
+        'tags'       => $p->get_tag_ids(),
         'permalink' => get_permalink( $product_id )
     );
 }
@@ -280,6 +287,20 @@ function wsp_execute_woo_update_product( $input ) {
             $p->set_image_id( $img_id );
             $updated['image_url'] = sanitize_text_field( wp_unslash( $input['image_url'] ) );
         }
+    }
+
+    if ( isset( $input['attributes'] ) ) {
+        $attrs = wsp_woo_build_attributes( $input['attributes'], $p->is_type( 'variable' ) );
+        if ( is_string( $attrs ) ) return array( 'success' => false, 'error' => $attrs );
+        $p->set_attributes( $attrs );
+        $updated['attributes'] = count( $attrs );
+    }
+
+    if ( isset( $input['categories'] ) || isset( $input['tags'] ) ) {
+        $terms_err = wsp_woo_apply_product_terms( $p, $input );
+        if ( $terms_err ) return array( 'success' => false, 'error' => $terms_err );
+        if ( isset( $input['categories'] ) ) $updated['categories'] = $p->get_category_ids();
+        if ( isset( $input['tags'] ) )       $updated['tags']       = $p->get_tag_ids();
     }
 
     if ( ! empty( $updated ) ) {

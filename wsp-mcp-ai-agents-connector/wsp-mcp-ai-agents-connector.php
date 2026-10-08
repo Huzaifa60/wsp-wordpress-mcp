@@ -43,6 +43,7 @@ require_once WSP_MCP_DIR . 'includes/server/class-oauth-store.php';
 require_once WSP_MCP_DIR . 'includes/server/class-oauth-server.php';
 require_once WSP_MCP_DIR . 'includes/server/class-auth.php';
 require_once WSP_MCP_DIR . 'includes/server/class-mcp-server.php';
+require_once WSP_MCP_DIR . 'includes/tools/admin-tool-defs.php';
 require_once WSP_MCP_DIR . 'includes/tools/native-tools.php';
 require_once WSP_MCP_DIR . 'includes/abilities/guard.php';
 require_once WSP_MCP_DIR . 'includes/abilities/posts.php';
@@ -63,6 +64,9 @@ require_once WSP_MCP_DIR . 'includes/abilities/health.php';
 require_once WSP_MCP_DIR . 'includes/abilities/yoast.php';
 require_once WSP_MCP_DIR . 'includes/abilities/rankmath.php';
 require_once WSP_MCP_DIR . 'includes/abilities/elementor.php';
+require_once WSP_MCP_DIR . 'includes/abilities/woocommerce-catalog.php'; // shared Woo helpers + catalog tools (before woocommerce.php)
+require_once WSP_MCP_DIR . 'includes/abilities/woocommerce-store.php';
+require_once WSP_MCP_DIR . 'includes/abilities/plugins.php';
 require_once WSP_MCP_DIR . 'includes/abilities/woocommerce.php';
 require_once WSP_MCP_DIR . 'includes/abilities/acf.php'; // Included ACF Pro Abilities
 require_once WSP_MCP_DIR . 'includes/abilities/uae.php'; // Included UAE Abilities
