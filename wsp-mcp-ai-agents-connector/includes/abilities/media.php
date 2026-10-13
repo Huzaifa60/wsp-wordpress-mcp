@@ -175,6 +175,10 @@ function wsp_execute_upload_media_from_url( $input ) {
 
     $file_array = array( 'name' => $name, 'tmp_name' => $tmp );
     $post_id    = isset( $input['post_id'] ) ? intval( $input['post_id'] ) : 0;
+    if ( $post_id ) {
+        $parent_guard = wsp_mcp_guard_edit_post( $post_id );
+        if ( is_wp_error( $parent_guard ) ) { wp_delete_file( $tmp ); return array( 'success' => false, 'error' => $parent_guard->get_error_message() ); }
+    }
 
     $mime_filter = function( $mimes ) {
         $mimes['jpg|jpeg|jpe'] = 'image/jpeg';
@@ -295,6 +299,10 @@ function wsp_execute_upload_media_from_data( $input ) {
 
     $file_array = array( 'name' => $name, 'tmp_name' => $tmp );
     $post_id    = isset( $input['post_id'] ) ? intval( $input['post_id'] ) : 0;
+    if ( $post_id ) {
+        $parent_guard = wsp_mcp_guard_edit_post( $post_id );
+        if ( is_wp_error( $parent_guard ) ) { wp_delete_file( $tmp ); return array( 'success' => false, 'error' => $parent_guard->get_error_message() ); }
+    }
 
     $mime_filter = function( $mimes ) {
         $mimes['jpg|jpeg|jpe'] = 'image/jpeg';

@@ -35,7 +35,7 @@ These three files give you complete project understanding without touching the c
 
 **Plugin Name:** WSP MCP - Free MCP Plugin for WordPress: Connect Claude, ChatGPT & AI Agents  
 (must match the `=== … ===` title line in `readme.txt` — Plugin Check flags a mismatch)  
-**Version:** 2.9.5
+**Version:** 2.9.6
 **Slug/prefix:** `wsp`  
 **WP option key:** `wsp_mcp_abilities`  
 **Constant prefix:** `WSP_MCP_`
@@ -80,7 +80,10 @@ where real-world stray output actually happens, is covered.
   registry (`register_tool()`), Origin validation, rate limiting (120/60s), `no-store` headers.
   Booted on `plugins_loaded` via `WSP_MCP_Server::init()`.
 - `class-session-store.php` — `WSP_MCP_Session_Store`: DB table `{prefix}wsp_mcp_sessions`,
-  `Mcp-Session-Id` issued on `initialize`, fingerprint-bound, sliding 24h expiry, daily cron
+  `Mcp-Session-Id` issued on `initialize`, bound to a **user-ID fingerprint** (never the raw token — OAuth
+  refresh changes the Authorization header; a mismatch returns **404**, not 403, so clients re-initialize;
+  every rejection is audit-logged via `WSP_MCP_Audit_Log::log_rejection()`; rate limiting is per user, failed
+  auth per IP), sliding 24h expiry, daily cron
   `wsp_mcp_session_cleanup`. **`touch_session()` must never treat a 0-row UPDATE as "no session"**
   (v2.6.8): expiry is second-resolution, so a request in the same second as `initialize` rewrites
   the identical `expires_at` and MySQL reports 0 *changed* rows. `false` = DB error → reject,
@@ -224,7 +227,7 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
         │   └── about-page.php       ← static WebSensePro info (MCP > About Us, after Analytics)
         └── abilities/           ← wsp_execute_* logic (called by the native server)
             ├── posts.php  pages.php  taxonomy.php  comments.php  media.php
-            ├── users.php  search.php  site.php  menus.php  site-editor.php  widgets.php  health.php  themes.php  theme-upload.php
+            ├── users.php  search.php  site.php  menus.php  site-editor.php  widgets.php  health.php  revisions.php  post-meta.php  blocks.php  redirects.php  themes.php  theme-upload.php
             ├── yoast.php  elementor.php
             ├── woocommerce.php  woocommerce-catalog.php  woocommerce-store.php  plugins.php  acf.php
 ```
@@ -237,7 +240,7 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
 
 | Constant | Value |
 |---|---|
-| `WSP_MCP_VERSION` | `'2.9.5'` |
+| `WSP_MCP_VERSION` | `'2.9.6'` |
 | `WSP_MCP_OPTION` | `'wsp_mcp_abilities'` (per-ability on/off toggles) |
 | `WSP_MCP_DIR` | `plugin_dir_path(__FILE__)` |
 
@@ -248,8 +251,9 @@ wsp-wordpress-mcp/                        ← repo root (NOT the plugin — docs
 `wsp_mcp_first_success` (timestamp of the first successful tool call — gates the review notice),
 user meta `wsp_mcp_review_notice` (`'dismissed'` or a snooze-until timestamp), DB tables
 `{prefix}wsp_mcp_sessions`, `{prefix}wsp_mcp_audit_log`, `{prefix}wsp_mcp_oauth_clients`,
-`{prefix}wsp_mcp_oauth_codes`, `{prefix}wsp_mcp_oauth_tokens`, cron events
-`wsp_mcp_session_cleanup`, `wsp_mcp_audit_log_cleanup`, `wsp_mcp_oauth_cleanup`.
+`{prefix}wsp_mcp_oauth_codes`, `{prefix}wsp_mcp_oauth_tokens`, `{prefix}wsp_mcp_redirects`, `{prefix}wsp_mcp_404_log` (+ options
+`wsp_mcp_redirects_db_version`, `wsp_mcp_redirects_count`), cron events
+`wsp_mcp_session_cleanup`, `wsp_mcp_audit_log_cleanup`, `wsp_mcp_oauth_cleanup`, `wsp_mcp_404_cleanup`.
 All of the above are removed in `uninstall.php`.
 
 ---
@@ -321,7 +325,7 @@ admin toggle for each is driven by its entry in `wsp_mcp_ability_registry()` (`r
 | `wsp/delete-post` | Delete Post | write | OFF | `delete_posts` | `id`* |
 
 - Delete moves to trash, not permanent deletion.
-- `status=all` expands to `['publish','draft','pending','future']`.
+- `status=all` expands to `['publish','draft','pending','future']` **only for callers with `edit_posts`**; without `edit_others_posts` unpublished results are limited to the caller's own posts, and users without `edit_posts` (Subscribers) always get published only.
 - `get-post` (v2.9.0) returns one post in **any** status (including trash) with full `post_content`, pinned to `post_type === 'post'`. Not-found and forbidden return `WP_Error( 'not_found' | 'forbidden' )` — never a plain array — so `do_tools_call()` logs them as error/denied rather than success.
 
 #### Pages (`pages.php`)
@@ -398,6 +402,7 @@ admin toggle for each is driven by its entry in `wsp_mcp_ability_registry()` (`r
 | `wsp/get-plugins` | Read Plugins | read | OFF | `activate_plugins` | none |
 | `wsp/update-site-info` | Update Site Info | write | OFF | `manage_options` | `name`, `tagline`, `admin_email` |
 | `wsp/update-permalink-structure` | Update Permalink Structure | write | OFF | `manage_options` | `structure`* (e.g. `/%postname%/`; empty string = plain) |
+| `wsp/update-site-context` | Update Site Context | write | OFF | `manage_options` | `file`* (agents\|changelog), `content`*, `mode` (replace\|append\|prepend), `enable` — callback lives in `context.php`, see "### Site Context" |
 | `wsp/activate-plugin` | Activate Plugin | write | OFF | `activate_plugins` | `file`* (e.g. `akismet/akismet.php`) |
 | `wsp/deactivate-plugin` | Deactivate Plugin | write | OFF | `activate_plugins` | `file`* |
 
@@ -473,7 +478,7 @@ All six require `edit_theme_options` (what core's global-styles and templates RE
 - **Global styles storage:** the user layer of theme.json lives in the active theme's `wp_global_styles` post (ID from `WP_Theme_JSON_Resolver::get_user_global_styles_post_id()`), JSON with `version` / `isGlobalStylesUserThemeJSON` / `settings` / `styles`. `origin=merged` returns `wp_get_global_settings()` / `wp_get_global_styles()` instead.
 - **Merge semantics** (`wsp_site_editor_merge()`): associative arrays merge key-by-key; lists (palettes, font families) and scalars replace wholesale; `null` deletes the key (falls back to theme). `merge=false` replaces `settings`/`styles` entirely.
 - **Variations:** `wsp_site_editor_style_variations()` wraps `WP_Theme_JSON_Resolver::get_style_variations()`, classifies each as `full` / `color` / `typography`, and assigns unique slugs (partials sharing a full variation's title get `-color`/`-typography`; collisions get `-2`, `-3`, …). Applying a full variation replaces the user layer; a partial merges into it. Applied before `settings`/`styles` input.
-- **Custom CSS guard (do not regress):** `css` keys are stripped from caller `styles` input (`wsp_site_editor_strip_custom_css()`), so MCP can never set custom CSS. The existing top-level `styles.css` (saved by an admin in the Site Editor) is carried over on every write so a replace/full variation doesn't wipe it. `WP_Theme_JSON::remove_insecure_properties()` runs only for users without `unfiltered_html`, matching core — running it for admins drops valid non-preset settings.
+- **Custom CSS guard (do not regress):** a `css` key in caller `styles` input now returns `WP_Error( 'custom_css_not_allowed' )` (previously silently stripped by `wsp_site_editor_strip_custom_css()`), so MCP can never set custom CSS and never claims it did. The existing top-level `styles.css` (saved by an admin in the Site Editor) is carried over on every write so a replace/full variation doesn't wipe it. `WP_Theme_JSON::remove_insecure_properties()` runs only for users without `unfiltered_html`, matching core — running it for admins drops valid non-preset settings.
 - **Templates:** `type` maps to `wp_template` / `wp_template_part`. Returned rows carry `id, slug, title, description, type, area, status, source, has_theme_file, is_customized` (+ `content` from get/create/update). `create` refuses an existing `theme//slug`. `update` on a theme-file template without a DB copy (`wp_id` empty) inserts the override post, seeded from the theme file for fields not supplied — the same thing the Site Editor does on first save. Template-part `area` is validated against `get_allowed_block_template_part_areas()`.
 - **Terms:** `wp_theme` / `wp_template_part_area` are set with `wp_set_object_terms()`, never `tax_input` — `wp_insert_post()` silently skips `tax_input` unless the user can `assign_terms`, which would leave an orphaned template not tied to any theme.
 - Caller-supplied template `content` goes through `wp_kses_post()` but **not** `wp_unslash()` (see Security patterns); post arrays are `wp_slash()`ed before `wp_insert_post()`/`wp_update_post()` so backslashes in block-comment JSON survive.
@@ -519,6 +524,71 @@ All OFF by default. Settings-page group **Site Health & Cron**, icon 🩺. Cron 
 - **Invariants (do not regress):** (1) **No schedule-new-event tool** — an arbitrary hook + args is a primitive for firing any action. (2) **`delete-cron-event` refuses `wsp_mcp_*` hooks** — they're only re-added in `wsp_mcp_activate` / `wsp_mcp_maybe_upgrade_db`, so removing one silently stops session / audit-log / OAuth cleanup until the next version bump. (3) **Error log reads only** the `error_log` ini path (if a readable file, not `syslog`) or `WP_CONTENT_DIR/debug.log` — never a caller-supplied path. Last ≤2 MB scanned, lines capped at 2000 chars, response capped at 64 KB (oldest dropped, `truncated: true`), path shown relative to `ABSPATH` or as basename only.
 - **Redaction** (`wsp_health_redact()` / `_deep()`): applied to cron args, run output, error-log lines and Site Health Info values — `define()`d keys/salts/secrets, Bearer/Basic tokens, `user:pass@` URL credentials, JWTs, `password=` / `token:` / `api_key=`-style pairs, and opaque tokens ≥40 chars. Error-log `grep` matches *after* redaction, so it can't be used to probe redacted secrets.
 
+#### Revisions (`revisions.php`) — unreleased
+
+Works on any post type with `revisions` support (posts, pages, CPTs). All OFF by default; settings group **Revisions** (🕘). Tool capability is `edit_posts`; the real gate is the **parent post's** `edit_post` (via `wsp_mcp_guard_edit_post()`), matching core's revisions REST controller.
+
+| Ability key | Label | Access | Inputs |
+|---|---|---|---|
+| `wsp/get-revisions` | List Revisions | read | `post_id`*, `limit` (1–100, default 20) |
+| `wsp/get-revision` | Read Revision | read | `id`* (revision ID) — full title/content/excerpt plus a `current` block of the live post |
+| `wsp/restore-revision` | Restore Revision | write | `id`* |
+
+- Each list row carries `changed_fields` (which of title/content/excerpt differ from the live post) and `is_autosave`.
+- Restore uses `wp_restore_post_revision()`: restores title, content, excerpt only (not status, slug, taxonomies, meta unless registered for revisions). `wp_update_post()` snapshots the live version as a new revision first, so a restore is undoable. All errors are `WP_Error`.
+
+#### Post Meta (`post-meta.php`) — unreleased
+
+Any post type except `revision`. All OFF by default; settings group **Post Meta** (🏷️). Tool capability `edit_posts`; real gates are `wsp_mcp_guard_edit_post()` (object) plus core's meta caps `edit_post_meta` / `delete_post_meta` (per key).
+
+| Ability key | Label | Access | Inputs |
+|---|---|---|---|
+| `wsp/get-post-meta` | Read Post Meta | read | `post_id`*, `key` (omit = all public meta, max 200), `single` (default true) |
+| `wsp/update-post-meta` | Update Post Meta | write | `post_id`*, `key`*, `value`* (any JSON type), `prev_value` |
+| `wsp/delete-post-meta` | Delete Post Meta | write | `post_id`*, `key`*, `value` |
+
+- **Protected keys (leading underscore, `is_protected_meta()`) are refused for read, update and delete** and hidden from the all-meta listing — keeps `_elementor_data` (code-bearing, see Elementor write guards), `_thumbnail_id`, `_wp_*`, and other plugins' secrets out of reach. Don't add a bypass; use dedicated tools (Yoast, Elementor, ACF).
+- Keys validated `^[A-Za-z0-9_\-:.]{1,255}$`. Values sanitized recursively with `wp_kses_post()` (`wsp_post_meta_sanitize_value()`), then `wp_slash()`ed because `update_post_meta()` unslashes (so no `wp_unslash()` on input — same reasoning as block markup).
+- `update_post_meta()` returns false for both failure and "unchanged"; the callback tells them apart and reports `changed: false`. Delete returns the `previous_value`; post meta has no trash.
+
+#### Blocks / Gutenberg (`blocks.php`) — unreleased
+
+Nine tools, all OFF by default; settings group **Blocks** (🧩). "Blocks" = reusable blocks (`wp_block` posts). Patterns and block types are read-only registry views.
+
+| Ability key | Label | Access | Capability | Inputs |
+|---|---|---|---|---|
+| `wsp/list-blocks` | List Reusable Blocks | read | `edit_posts` | `search`, `status`, `per_page`, `page` |
+| `wsp/get-block` | Read Reusable Block | read | `edit_posts` | `id`*, `parse` |
+| `wsp/create-block` | Create Reusable Block | write | `publish_posts` | `title`*, `content`*, `status`, `slug`, `sync_status` |
+| `wsp/update-block` | Update Reusable Block | write | `edit_posts` | `id`*, `title`, `content`, `status`, `sync_status` |
+| `wsp/delete-block` | Delete Reusable Block | write | `delete_posts` | `id`*, `force` (default trash) |
+| `wsp/list-patterns` | List Block Patterns | read | `edit_posts` | `search`, `category`, `include_content`, `limit` |
+| `wsp/get-post-blocks` | Read Post Blocks | read | `edit_posts` | `post_id`* |
+| `wsp/update-post-blocks` | Update Post Blocks | write | `edit_posts` | `post_id`*, exactly one of `blocks[]` \| `content` |
+| `wsp/list-block-types` | List Block Types | read | `edit_posts` | `search`, `namespace`, `include_attributes`, `limit` |
+
+- Update/delete use `wsp_mcp_guard_edit_post/delete_post( $id, 'wp_block' )`; create checks the type's `cap->create_posts` / `cap->publish_posts`; status changes go through `wsp_mcp_guard_post_status()`. Post-level tools use `wsp_mcp_guard_edit_post()` and refuse revision/attachment/nav_menu_item.
+- Sync mode = meta `wp_pattern_sync_status`: `unsynced` stored, `synced` = meta deleted (matches the editor).
+- **`update-post-blocks`:** `wsp_blocks_normalize()` validates the tree (registered block names only, `^[a-z0-9-]+/[a-z0-9-]+$`, max 2000 nodes / 20 deep, `innerContent` must hold one `null` per inner block), strings in `attrs` are kses'd, then `serialize_blocks()` and a final `wp_kses_post()` over the markup. `wp_slash()` before `wp_update_post()`, no `wp_unslash()` (block-markup rule). Replaces ALL content; WP stores the old version as a revision.
+- `delete-block` and `get-block` report `used_in` (posts embedding `{"ref":ID}`, caller-editable only, max 50).
+
+#### Redirects & 404 Manager (`redirects.php` + `includes/seo/class-redirects.php`) — unreleased
+
+Five tools, all OFF by default, all `manage_options`; settings group **Redirects & 404** (↪️). Logic = callbacks in `abilities/redirects.php`; storage + front-end runtime = class `WSP_MCP_Redirects`.
+
+| Ability key | Label | Access | Inputs |
+|---|---|---|---|
+| `wsp/list-redirects` | List Redirects | read | `search`, `per_page`, `page` |
+| `wsp/create-redirect` | Create Redirect | write | `source`*, `destination`*, `status_code` (301\|302, default 301), `allow_external`, `note` |
+| `wsp/delete-redirect` | Delete Redirect | write | `id`* |
+| `wsp/get-404-logs` | Read 404 Log | read | `limit`, `orderby` (recent\|hits), `search`, `min_hits`, `days`, `unresolved_only` |
+| `wsp/clear-404-logs` | Clear 404 Log | write | `id` \| `all` |
+
+- **Tables:** `{prefix}wsp_mcp_redirects` (unique `source_hash`) and `{prefix}wsp_mcp_404_log` (one aggregated row per path, unique `path_hash`, upserted with `ON DUPLICATE KEY`). Option `wsp_mcp_redirects_db_version` is the class's **own** schema gate (`WSP_MCP_Redirects::init()` on `plugins_loaded` → `install()`), independent of `wsp_mcp_db_version`, because the plugin version was not bumped when this shipped. Autoloaded option `wsp_mcp_redirects_count` lets requests skip the lookup query when no redirects exist. Cron `wsp_mcp_404_cleanup` (daily; retention filter `wsp_mcp_404_log_retention_days`, default 30). All removed in `uninstall.php`.
+- **Runtime (`template_redirect`):** priority 1 `handle_redirect()` — exact path match (case-insensitive, trailing slash and home sub-directory ignored, query string ignored, GET/HEAD only), one indexed query, hit counter update, `wp_redirect()` + `exit`. Priority 999 `log_404()` — only when `is_404()` **and** `wsp/get-404-logs` is enabled (admin opt-in; turning the ability off stops recording). Redirects keep working when their tools are toggled off — they are site configuration.
+- **Invariants (do not regress):** (1) destinations are `/path` or http(s) URLs; **other domains need `allow_external=true`** (open-redirect/phishing primitive), `//host`, backslashes, credentials refused — this is why plain `wp_redirect()` is acceptable at runtime; (2) sources under `/wp-admin`, `/wp-login.php`, `/wp-json`, `/wp-cron.php`, `/xmlrpc.php` and `/` are refused (a redirect on `/wp-json` would sever the MCP endpoint); (3) loops (direct or via ≤10 hops) refused on create, plus a runtime self-redirect guard; (4) **404 log stores no IPs, strips query strings from path and referrer**, is capped at 1000 rows (random-1/20 prune on insert + daily cron); (5) caps: 1000 redirects, 500-char paths.
+- No update/toggle-redirect tool (delete + create). No regex/wildcard matching.
+
 #### Theme upload (`theme-upload.php`) — added v2.9.4
 
 Lives in the existing **Themes** settings group (🎨) next to Read Themes / Switch Theme (`themes.php`, v2.9.1). OFF by default. Not plugin-gated. **Keep the handler in `theme-upload.php`, not `themes.php`** — it was first written into `themes.php`, the 2.9.3 merge kept upstream's version of that file, `wsp_execute_upload_theme()` vanished, and every call failed with "tool has no handler" (the `is_callable()` check in `WSP_MCP_Server::do_tools_call()`).
@@ -531,6 +601,8 @@ Lives in the existing **Themes** settings group (🎨) next to Read Themes / Swi
 - **Install always goes through core's `Theme_Upgrader::install( $zip, [ 'overwrite_package' => $overwrite ] )`** with a `WP_Ajax_Upgrader_Skin` — the Appearance > Themes > Upload code path. Core therefore does the authoritative validation (style.css `Theme Name`, `index.php` or `templates/index.html`, Requires PHP/WP), installs a missing parent from WordPress.org, and handles replace + rollback. Don't hand-roll file writes into the themes directory.
 - **Capability:** `install_themes` — `map_meta_cap()` turns this into `do_not_allow` under `DISALLOW_FILE_MODS` and for non-super-admins on multisite, so both are enforced without extra code (the callback also checks `wp_is_file_mod_allowed()` for a clearer message). `activate=true` additionally needs `switch_themes`; on multisite a non-network-enabled theme is network-enabled only if the caller has `manage_network_themes`. Activation runs `validate_theme_requirements()` then `switch_theme()`; an activation failure is returned as `activation_error` alongside the successful install, not as a tool error.
 - **Path guard (do not regress):** `wsp_theme_normalize_path()` rejects absolute / drive-letter paths, `..`, empty segments, hidden (dot) segments (no `.htaccess`), characters outside `[A-Za-z0-9._-]`, and any extension outside `wsp_theme_text_extensions()` / `wsp_theme_binary_extensions()`. Limits: `WSP_THEME_MAX_FILES` (1000) and `WSP_THEME_MAX_BYTES` (20 MB decoded).
+- **Single-file + chunked tools (`theme-files.php`, Themes group, `install_themes`, OFF):** `wsp/get-theme-file`, `wsp/update-theme-file` (reuses `wsp_theme_preflight()`; backs up to `uploads/wsp-mcp-theme-backups/`), `wsp/upload-theme-chunk` (`upload_id` + ordered `part`, `complete=true` installs via `wsp_execute_upload_theme`). Diagnostics: `wsp/get-mcp-diagnostics` (`diagnostics.php`, Site group, `manage_options`). Woo: `wsp_woo_assign_product_tags` in `admin-tool-defs.php`.
+- **Overwrite safety (do not regress):** with `overwrite` + `files`, the map is merged into the installed theme unless `replace_all=true`; the old folder is copied to `{slug}-backup-{timestamp}` first; `wsp_theme_preflight()` rejects PHP parse errors and literal `require`/`include` targets missing from the final theme before install.
 - **Content is NOT sanitized** — a theme *is* PHP code. This is deliberate and identical to core's upload screen; the safety boundary is the admin-only capability + OFF-by-default toggle. Text content is stored verbatim (no `wp_unslash()`, same reasoning as block markup).
 - Without `overwrite`, an existing slug is refused (`theme_exists` / core's `folder_exists`, both telling the agent about `overwrite`). If `WP_Filesystem()` can't get direct/credentialed access, returns `filesystem_unavailable` instead of an FTP prompt. Upgrader output is buffered and discarded so it can't corrupt the JSON response.
 
@@ -931,10 +1003,18 @@ Only registered if `wsp_uae_is_active()`. Adds 45 tools to manipulate UAE widget
      `WSP_MCP_Server::enabled_tools()` honours `active_callback` before `enable_key`.
   3. Resources `wsp://context/agents.md` / `wsp://context/changelog.md` (`resources/list`, `resources/read`; unknown
      URI → JSON-RPC error `-32002`).
+- **Write tool `wsp_update_site_context` (unreleased):** `wsp_execute_update_site_context()` in `context.php`. Inputs
+  `file`* (agents|changelog), `content`*, `mode` (replace|append|prepend, default replace), `enable` (bool, sets the
+  master switch). Registry key `wsp/update-site-context` (group **Site**, OFF by default), capability `manage_options`.
+  Unlike the read tool it uses a normal `enable_key`, **not** `active_callback`, so it works while the Context page is
+  still empty/off. Large files are sent in chunks (`replace` then `append`); content is sanitized with `$trim = false`
+  so chunk boundaries survive. Over-limit writes return `WP_Error( 'too_large' )` — never truncate silently. Response
+  includes `total_chars` and `sha256` for verification. No `wp_unslash()` (MCP args are never slashed).
 - **Sanitization:** documents are admin-authored plain text, never rendered as HTML (admin textarea uses
-  `esc_textarea()`, MCP output is JSON), so `wsp_mcp_context_sanitize()` normalises UTF-8/newlines, drops control
-  characters and caps at `WSP_MCP_CONTEXT_MAX_CHARS` (50,000) — it deliberately does **not** strip tags, since Markdown
-  contains `<placeholders>`/inline HTML. Don't "fix" this with `wp_kses_post()`; it would corrupt the documents.
+  `esc_textarea()`, MCP output is JSON), so `wsp_mcp_context_sanitize( $text, $trim = true )` normalises UTF-8/newlines,
+  drops control characters and caps at `WSP_MCP_CONTEXT_MAX_CHARS` (300,000; was 50,000) — it deliberately does **not**
+  strip tags, since Markdown contains `<placeholders>`/inline HTML. Don't "fix" this with `wp_kses_post()`; it would
+  corrupt the documents. The admin "Load from file" picker alerts when a file exceeds the limit.
 - **Trust/leak note (do not regress):** the tool has capability `''` and `instructions` go to every authenticated
   client, including low-privilege Application Password users — the page tells admins never to put secrets in these
   documents. Don't add anything dynamic (user data, options, keys) to the pushed text.
@@ -1013,7 +1093,7 @@ Shared by **both** admin pages; loaded before them in the main plugin file so th
 - MIME types: `sanitize_mime_type($input['type'])`.
 - Permission callbacks: `__return_true` for public reads; `current_user_can('cap')` closures for writes and sensitive reads.
 - MCP requests are authenticated inside the native server handler (App Password / Bearer key); per-tool capability checks via `require_cap()`.
-- **`require_cap()` only checks the ONE broad primitive capability recorded at registration — it cannot answer "may this user act on THIS object?".** Every write callback that accepts a caller-supplied object ID MUST additionally call the object-level guards in `includes/abilities/guard.php`: `wsp_mcp_guard_edit_post($id, $type)` / `wsp_mcp_guard_delete_post($id, $type)` enforce the `edit_post` / `delete_post` meta capability and pin the post type; `wsp_mcp_guard_post_status($post, $status)` blocks `publish`/`future`/`private` transitions unless the caller holds `publish_posts`. All return `WP_Error` on denial. Application Password callers run as their real (possibly Contributor-level) user, so skipping this is a broken-access-control bug (see CHANGELOG `[2.7.1]`, Patchstack). Currently applied in `posts.php`, `pages.php`, `media.php`, `cpt.php`; `yoast.php` / `rankmath.php` do their own equivalent `edit_post` check.
+- **`require_cap()` only checks the ONE broad primitive capability recorded at registration — it cannot answer "may this user act on THIS object?".** Every write callback that accepts a caller-supplied object ID MUST additionally call the object-level guards in `includes/abilities/guard.php`: `wsp_mcp_guard_edit_post($id, $type)` / `wsp_mcp_guard_delete_post($id, $type)` enforce the `edit_post` / `delete_post` meta capability and pin the post type; `wsp_mcp_guard_post_status($post, $status)` blocks `publish`/`future`/`private` transitions unless the caller holds `publish_posts`. All return `WP_Error` on denial. Application Password callers run as their real (possibly Contributor-level) user, so skipping this is a broken-access-control bug (see CHANGELOG `[2.7.1]`, Patchstack). Currently applied in `posts.php`, `pages.php`, `media.php` (incl. upload `post_id`), `cpt.php`, `uae.php`, and `elementor.php` (via `wsp_elementor_get_data()` + page-settings tools); `yoast.php` / `rankmath.php` do their own equivalent `edit_post` check.
 - Admin-post actions (e.g. API-key regenerate) are nonce-protected with `wp_nonce_field()` / `check_admin_referer()` and gated by `current_user_can('manage_options')`.
 - Output in admin pages is escaped (`esc_html`/`esc_attr`/`esc_url`/`esc_textarea`/`esc_js`).
 
