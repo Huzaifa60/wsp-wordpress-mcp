@@ -3,9 +3,33 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 function wsp_execute_get_posts( $input ) {
     $per_page = isset( $input['per_page'] ) ? intval( $input['per_page'] ) : 10;
-    $status   = isset( $input['status'] )   ? sanitize_text_field( wp_unslash( $input['status'] ) ) : 'publish';
-    if ( 'all' === $status ) $status = array( 'publish', 'draft', 'pending', 'future' );
-    $q     = new WP_Query( array( 'post_status' => $status, 'posts_per_page' => $per_page, 'orderby' => 'date', 'order' => 'DESC' ) );
+    $status   = isset( $input['status'] )   ? sanitize_key( wp_unslash( $input['status'] ) ) : 'publish';
+    if ( ! in_array( $status, array( 'publish', 'draft', 'pending', 'future', 'all' ), true ) ) $status = 'publish';
+    $args = array( 'post_type' => 'post', 'posts_per_page' => max( 1, min( 100, $per_page ) ), 'orderby' => 'date', 'order' => 'DESC' );
+    if ( 'publish' === $status ) {
+        $args['post_status'] = 'publish';
+    } elseif ( ! current_user_can( 'edit_posts' ) ) {
+        // Unpublished content is never listed for users who can't edit posts (e.g. Subscribers).
+        $args['post_status'] = 'publish';
+    } else {
+        $args['post_status'] = ( 'all' === $status ) ? array( 'publish', 'draft', 'pending', 'future' ) : $status;
+        // Non-published posts of other authors need edit_others_posts (Contributors/Authors see only their own).
+        if ( ! current_user_can( 'edit_others_posts' ) ) {
+            $args['author__in'] = array( get_current_user_id() );
+            if ( 'all' === $status ) {
+                // Published posts of anyone plus own unpublished: run as two-part merge below.
+                $args['post_status'] = array( 'draft', 'pending', 'future' );
+            }
+        }
+    }
+    $q = new WP_Query( $args );
+    if ( 'all' === $status && isset( $args['author__in'] ) && current_user_can( 'edit_posts' ) ) {
+        $pub = new WP_Query( array( 'post_type' => 'post', 'post_status' => 'publish', 'posts_per_page' => $args['posts_per_page'], 'orderby' => 'date', 'order' => 'DESC' ) );
+        $merged = array_slice( array_merge( $pub->posts, $q->posts ), 0, $args['posts_per_page'] );
+        usort( $merged, function ( $a, $b ) { return strcmp( $b->post_date, $a->post_date ); } );
+        $q->posts = $merged;
+        $q->found_posts += $pub->found_posts;
+    }
     $posts = array();
     foreach ( $q->posts as $p ) {
         $posts[] = array(

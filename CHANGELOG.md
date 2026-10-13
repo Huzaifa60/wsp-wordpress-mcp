@@ -13,6 +13,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2.9.6] — 2026-10-13
+
+### Security
+
+- Hardened authorization checks on post listing, Elementor, Ultimate Addons for Elementor and media-upload tools (object-level `edit_post` / `delete_post` guards; unpublished post listing limited to users who can edit them).
+
 ### Fixed — session 403 loop, audit gaps, per-user rate limit, destructive theme overwrite
 
 - **Sessions no longer die when an OAuth token refreshes.** `WSP_MCP_Auth::fingerprint()` now hashes the

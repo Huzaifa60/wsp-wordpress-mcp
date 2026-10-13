@@ -131,21 +131,26 @@ function wsp_execute_uae_templates_create($input) {
     update_post_meta($id, 'ehf_template_type', sanitize_text_field($input['type'] ?? 'header')); update_post_meta($id, '_elementor_edit_mode', 'builder');
     return array('success'=>true, 'id'=>$id);
 }
-function wsp_execute_uae_templates_delete($input) { $c = wsp_uae_cap('delete_posts'); if (is_wp_error($c)) return $c; return array('success'=>wp_trash_post(intval($input['id'])) !== false); }
+function wsp_execute_uae_templates_delete($input) {
+    $c = wsp_uae_cap('delete_posts'); if (is_wp_error($c)) return $c;
+    $g = wsp_mcp_guard_delete_post($input['id'] ?? 0, 'elementor_library'); if (is_wp_error($g)) return $g;
+    return array('success'=>wp_trash_post($g->ID) !== false);
+}
 function wsp_execute_uae_templates_duplicate($input) {
     $c = wsp_uae_cap('publish_posts'); if (is_wp_error($c)) return $c;
-    $p = get_post(intval($input['id'])); if(!$p) return array('error'=>'Not found');
+    $p = wsp_mcp_guard_edit_post($input['id'] ?? 0, 'elementor_library'); if (is_wp_error($p)) return $p;
     $id = wp_insert_post(array('post_title'=>$p->post_title.' (Copy)', 'post_type'=>$p->post_type, 'post_status'=>'draft', 'post_content'=>$p->post_content));
     update_post_meta($id, '_elementor_data', get_post_meta($p->ID, '_elementor_data', true));
     return array('success'=>true, 'new_id'=>$id);
 }
 function wsp_execute_uae_active_get($input) { return wsp_execute_uae_templates_list($input); }
-function wsp_execute_uae_templates_get($input) { $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c; $p=get_post(intval($input['id'])); return array('id'=>$p->ID, 'title'=>$p->post_title); }
+function wsp_execute_uae_templates_get($input) { $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c; $p=wsp_mcp_guard_edit_post($input['id'] ?? 0, 'elementor_library'); if (is_wp_error($p)) return $p; return array('id'=>$p->ID, 'title'=>$p->post_title); }
 function wsp_execute_uae_templates_update($input) {
     $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c;
-    wp_update_post(array('ID'=>intval($input['id']), 'post_title'=>sanitize_text_field($input['title']))); return array('success'=>true);
+    $g = wsp_mcp_guard_edit_post($input['id'] ?? 0, 'elementor_library'); if (is_wp_error($g)) return $g;
+    wp_update_post(array('ID'=>$g->ID, 'post_title'=>sanitize_text_field($input['title']))); return array('success'=>true);
 }
-function wsp_execute_uae_templates_restore($input) { $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c; return array('success'=>wp_untrash_post(intval($input['id'])) !== false); }
+function wsp_execute_uae_templates_restore($input) { $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c; $g = wsp_mcp_guard_delete_post($input['id'] ?? 0, 'elementor_library'); if (is_wp_error($g)) return $g; return array('success'=>wp_untrash_post($g->ID) !== false); }
 function wsp_execute_uae_shortcode_render($input) {
     $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c;
     $shortcode = wp_unslash($input['shortcode']);
@@ -156,14 +161,19 @@ function wsp_execute_uae_shortcode_render($input) {
 function wsp_execute_uae_pages_list($input) { return function_exists('wsp_execute_get_pages') ? wsp_execute_get_pages($input) : array(); }
 function wsp_execute_uae_pages_create($input) { return function_exists('wsp_execute_create_page') ? wsp_execute_create_page($input) : array(); }
 function wsp_execute_uae_pages_delete($input) { return function_exists('wsp_execute_delete_page') ? wsp_execute_delete_page($input) : array(); }
-function wsp_execute_uae_pages_restore($input) { $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c; return array('success'=>wp_untrash_post(intval($input['id'])) !== false); }
+function wsp_execute_uae_pages_restore($input) { $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c; $g = wsp_mcp_guard_delete_post($input['id'] ?? 0, 'page'); if (is_wp_error($g)) return $g; return array('success'=>wp_untrash_post($g->ID) !== false); }
 function wsp_execute_uae_pages_update_meta($input) {
     $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c;
-    update_post_meta(intval($input['id']), sanitize_text_field($input['meta_key']), sanitize_text_field($input['meta_value'])); return array('success'=>true);
+    $g = wsp_mcp_guard_edit_post($input['id'] ?? 0); if (is_wp_error($g)) return $g;
+    $mk = sanitize_text_field($input['meta_key']);
+    if (is_protected_meta($mk, 'post') || !current_user_can('edit_post_meta', $g->ID, $mk)) return new WP_Error('forbidden', 'This meta key cannot be modified.');
+    update_post_meta($g->ID, $mk, sanitize_text_field($input['meta_value'])); return array('success'=>true);
 }
 function wsp_execute_uae_pages_update_status($input) {
     $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c;
-    wp_update_post(array('ID'=>intval($input['id']), 'post_status'=>sanitize_text_field($input['status']))); return array('success'=>true);
+    $g = wsp_mcp_guard_edit_post($input['id'] ?? 0, 'page'); if (is_wp_error($g)) return $g;
+    $st = wsp_mcp_guard_post_status($g, $input['status']); if (is_wp_error($st)) return $st;
+    wp_update_post(array('ID'=>$g->ID, 'post_status'=>sanitize_text_field($input['status']))); return array('success'=>true);
 }
 
 /* --- 4. BUILDER & ENGINE --- */
@@ -353,5 +363,6 @@ function wsp_execute_uae_design_system_get_tokens($input) {
 function wsp_execute_uae_display_rules_get_locations($input) { return array('locations'=>array('entire_site', 'singular', 'archive')); }
 function wsp_execute_uae_display_rules_update($input) {
     $c = wsp_uae_cap('edit_posts'); if (is_wp_error($c)) return $c;
-    update_post_meta(intval($input['template_id']), 'ehf_target_include', sanitize_text_field($input['rule'])); return array('success'=>true);
+    $g = wsp_mcp_guard_edit_post($input['template_id'] ?? 0, 'elementor_library'); if (is_wp_error($g)) return $g;
+    update_post_meta($g->ID, 'ehf_target_include', sanitize_text_field($input['rule'])); return array('success'=>true);
 }

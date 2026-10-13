@@ -10,6 +10,9 @@ function wsp_elementor_is_active() {
 }
 
 function wsp_elementor_get_data( $post_id ) {
+    // Object-level check: every element read/write tool loads the page through here.
+    $guard = wsp_mcp_guard_edit_post( $post_id );
+    if ( is_wp_error( $guard ) ) return $guard;
     if ( 'builder' !== get_post_meta( $post_id, '_elementor_edit_mode', true ) ) {
         return new WP_Error( 'not_elementor_page', 'This post was not built with Elementor.' );
     }
@@ -867,6 +870,8 @@ function wsp_execute_elementor_get_page_settings( $input ) {
     if ( ! $post_id ) {
         return array( 'success' => false, 'error' => 'post_id is required.' );
     }
+    $guard = wsp_mcp_guard_edit_post( $post_id );
+    if ( is_wp_error( $guard ) ) return array( 'success' => false, 'error' => $guard->get_error_message() );
 
     $settings = get_post_meta( $post_id, '_elementor_page_settings', true );
     if ( ! is_array( $settings ) ) {
@@ -888,6 +893,8 @@ function wsp_execute_elementor_update_page_settings( $input ) {
     if ( ! $post_id ) {
         return array( 'success' => false, 'error' => 'post_id is required.' );
     }
+    $guard = wsp_mcp_guard_edit_post( $post_id );
+    if ( is_wp_error( $guard ) ) return array( 'success' => false, 'error' => $guard->get_error_message() );
 
     $updated = array();
     $settings = get_post_meta( $post_id, '_elementor_page_settings', true );

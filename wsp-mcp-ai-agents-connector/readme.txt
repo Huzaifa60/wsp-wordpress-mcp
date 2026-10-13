@@ -4,7 +4,7 @@ Tags: mcp, ai, claude, chatgpt, ai agent
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.9.5
+Stable tag: 2.9.6
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -121,6 +121,9 @@ Watch the step-by-step video tutorial:
 https://youtu.be/hxhjs3IUYQE
 
 == Changelog ==
+
+= 2.9.6 =
+* Security: hardened authorization checks on post listing, Elementor, Ultimate Addons for Elementor and media upload tools. Update recommended.
 
 = 2.9.5 =
 * New: Site Context — a new MCP > Context page where you write AGENTS.md (how your site is built and the rules to follow) and CHANGELOG.md (what changed and why). Turn on "Enable Site Context" (off by default) and every connected AI reads them first, so it doesn't have to explore your whole site. This saves time and tokens. Also available through the `wsp_get_site_context` tool and as MCP resources. Reconnect your AI app after editing. Don't put passwords or keys in these documents.
@@ -260,6 +263,9 @@ https://youtu.be/hxhjs3IUYQE
 * Elementor abilities, modular architecture, auto config generator.
 
 == Upgrade Notice ==
+
+= 2.9.6 =
+Security update: hardened authorization checks. Update recommended.
 
 = 2.9.5 =
 Adds Site Context (MCP > Context, off by default): give your AI an AGENTS.md and CHANGELOG.md to read first. Also adds 34 WooCommerce store-management tools (delete, categories, tags, attributes, settings, tax, shipping, payment gateways) and 4 plugin-management tools (install, install from URL, delete, update). All new tools are OFF by default — enable them from MCP > Settings if you want them.
