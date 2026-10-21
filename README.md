@@ -5,7 +5,7 @@
 > **By [WebSensePro](https://websensepro.com) — Official Shopify Partner & WordPress Agency**
 
 [![Version](https://img.shields.io/badge/Version-2.9.6-blue?style=for-the-badge)](https://github.com/bilalnaseer/wsp-wordpress-mcp/releases)
-[![YouTube](https://img.shields.io/badge/YouTube-140K%2B%20Subscribers-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/websensepro)
+[![YouTube](https://img.shields.io/badge/YouTube-150K%2B%20Subscribers-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/websensepro)
 [![License](https://img.shields.io/badge/License-GPL%202.0-green?style=for-the-badge)](LICENSE)
 
 WSP MCP is a **free MCP plugin for WordPress**. Install it, connect your AI app, and just ask:
@@ -265,7 +265,7 @@ Built by [WebSensePro](https://websensepro.com) — an AI-powered digital media 
 **1,200+** projects delivered · **850+** websites launched · **500+** clients worldwide · **120+** AI automations deployed · **10+** years in digital services
 
 - 🏆 [Official Shopify Partner](https://www.shopify.com/partners/directory/partner/websensepro1)
-- 🎥 [140K+ YouTube Subscribers](https://m.youtube.com/websensepro)
+- 🎥 [150K+ YouTube Subscribers](https://m.youtube.com/websensepro)
 - 🤖 [Official n8n Creator](https://n8n.io/creators/websensepro/)
 - 📧 [info@websensepro.com](mailto:info@websensepro.com)
 

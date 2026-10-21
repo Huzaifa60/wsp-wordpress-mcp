@@ -25,6 +25,11 @@ You stay in control: every tool has its own on/off switch, anything that changes
 
 Built and maintained by [WebSensePro](https://websensepro.com/). Guides and help: [wspmcp.com](https://wspmcp.com/).
 
+= More free tools from WebSensePro =
+
+* [Free Local SEO Audit](https://freelocalseoaudit.com/): check how your business shows up in local search, completely free.
+* [SEO Schema Markup Generator](https://seoschemamarkup.com/): create structured data (schema markup) for your pages, completely free.
+
 = Watch: set it up in a few minutes =
 
 https://youtu.be/kD2FSvL7EE0
