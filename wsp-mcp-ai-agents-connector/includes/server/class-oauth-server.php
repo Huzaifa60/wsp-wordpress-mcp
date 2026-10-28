@@ -243,12 +243,6 @@ class WSP_MCP_OAuth_Server {
 			// looking for here, and it is deliberately scoped to our own base path
 			// so a root-level OpenID provider on the same domain is left alone.
 			$as_paths[] = $base . '/.well-known/openid-configuration';
-			// RFC 8414 §3.1 path insertion: the form a spec-compliant client tries
-			// first for an issuer that carries a path, e.g.
-			// https://host/.well-known/oauth-authorization-server/huzdev. Without it,
-			// a subdirectory install answers 404 to that lookup.
-			$as_paths[] = '/.well-known/oauth-authorization-server' . $base;
-			$as_paths[] = '/.well-known/openid-configuration' . $base;
 		}
 
 		if ( in_array( $path, $resource_paths, true ) ) {
