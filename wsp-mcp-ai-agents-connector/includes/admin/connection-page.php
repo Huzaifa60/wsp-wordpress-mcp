@@ -416,6 +416,17 @@ function wsp_mcp_connection_page() {
 			<?php endif; ?>
 
 			<div class="wsp-config-box"<?php echo $oauth_on ? '' : ' style="opacity:.55"'; ?>>
+				<?php if ( $oauth_on ) : ?>
+					<div class="wsp-instructions">
+						<p><strong><?php esc_html_e( 'Manual OAuth settings', 'wsp-mcp-ai-agents-connector' ); ?></strong> — <?php esc_html_e( 'if a client says it could not discover OAuth settings (common on hosts that block /.well-known/ paths, such as SiteGround), choose the manual option and enter these values:', 'wsp-mcp-ai-agents-connector' ); ?></p>
+						<ul>
+							<li><?php esc_html_e( 'MCP server URL:', 'wsp-mcp-ai-agents-connector' ); ?> <code><?php echo esc_html( rest_url( 'wsp-mcp/v1/mcp' ) ); ?></code></li>
+							<li><?php esc_html_e( 'Authorization URL:', 'wsp-mcp-ai-agents-connector' ); ?> <code><?php echo esc_html( home_url( '/wsp-mcp-oauth/authorize' ) ); ?></code></li>
+							<li><?php esc_html_e( 'Token URL:', 'wsp-mcp-ai-agents-connector' ); ?> <code><?php echo esc_html( home_url( '/wsp-mcp-oauth/token' ) ); ?></code></li>
+							<li><?php esc_html_e( 'Registration URL:', 'wsp-mcp-ai-agents-connector' ); ?> <code><?php echo esc_html( home_url( '/wsp-mcp-oauth/register' ) ); ?></code></li>
+						</ul>
+					</div>
+				<?php endif; ?>
 				<div class="wsp-instructions">
 					<p><span class="wsp-badge"><?php esc_html_e( 'OAuth login', 'wsp-mcp-ai-agents-connector' ); ?></span> <?php esc_html_e( 'Works in Claude.ai, Claude Desktop, and Claude mobile — they all share the same Connectors settings.', 'wsp-mcp-ai-agents-connector' ); ?></p>
 					<p>1. <?php esc_html_e( 'In Claude, open', 'wsp-mcp-ai-agents-connector' ); ?> <strong><?php esc_html_e( 'Customize', 'wsp-mcp-ai-agents-connector' ); ?> &gt; <?php esc_html_e( 'Connectors', 'wsp-mcp-ai-agents-connector' ); ?></strong> <?php esc_html_e( '(Team/Enterprise: Organization settings > Connectors) and click', 'wsp-mcp-ai-agents-connector' ); ?> <strong><?php esc_html_e( 'Add custom connector', 'wsp-mcp-ai-agents-connector' ); ?></strong>.</p>
