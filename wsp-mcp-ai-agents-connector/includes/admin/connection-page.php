@@ -452,6 +452,11 @@ function wsp_mcp_connection_page() {
 					</div>
 				</div>
 				<pre class="wsp-code-area" id="wsp-code-ccurl" style="white-space:normal;word-break:break-all;"><?php echo esc_html( $endpoint ); ?></pre>
+				<div class="wsp-media">
+					<h3><?php esc_html_e( 'Walkthrough', 'wsp-mcp-ai-agents-connector' ); ?></h3>
+					<img src="<?php echo esc_url( plugin_dir_url( WSP_MCP_DIR . 'wsp-mcp-ai-agents-connector.php' ) . 'assets/images/claude-connect-steps.gif' ); ?>" width="960" height="610" loading="lazy"
+						alt="<?php esc_attr_e( 'Animated walkthrough: open Customize > Connectors in Claude, add a custom connector with the MCP server URL, click Connect, approve access on this site, and choose which tools Claude may use.', 'wsp-mcp-ai-agents-connector' ); ?>" />
+				</div>
 			</div>
 			<p class="wsp-gen-notice" style="margin-top:14px;">
 				<?php esc_html_e( '⚠ This site must be reachable on the public internet with a real domain and HTTPS — Claude\'s servers connect from their own cloud, not your computer, so they cannot reach localhost or a private network.', 'wsp-mcp-ai-agents-connector' ); ?>
